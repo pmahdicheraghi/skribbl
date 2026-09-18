@@ -283,18 +283,30 @@ const potentialPaths = [
   path.resolve(process.cwd(), 'client/dist'),
   path.resolve(process.cwd(), '../client/dist'),
   path.resolve(__dirname, '../../../../client/dist'),
-  path.resolve(__dirname, '../../client/dist')
+  path.resolve(__dirname, '../../client/dist'),
+  path.resolve(__dirname, '../client/dist'),
+  path.resolve('/opt/render/project/src/client/dist')
 ];
 const clientDist = potentialPaths.find(p => fs.existsSync(p));
 
+app.get('/healthz', (_req, res) => {
+  res.status(200).send('OK');
+});
+
 if (clientDist) {
+  console.log(`Serving client dist from: ${clientDist}`);
   app.use(express.static(clientDist));
   app.get('*', (_req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'));
   });
+} else {
+  console.error('WARNING: client/dist directory was not found! Searched in:', potentialPaths);
+  app.get('*', (_req, res) => {
+    res.status(200).send('<h1>Persian Skribbl Server</h1><p>Server is running, but client build was not found.</p>');
+  });
 }
 
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`Persian Skribbl server running on http://localhost:${PORT}`);
+const PORT = Number(process.env.PORT) || 3001;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Persian Skribbl server running on http://0.0.0.0:${PORT}`);
 });
