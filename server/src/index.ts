@@ -26,6 +26,16 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
 
 const rooms = new Map<string, Room>();
 const socketToRoom = new Map<string, string>();
+const disconnectTimeouts = new Map<string, NodeJS.Timeout>();
+
+function cancelPlayerDisconnectTimeout(roomId: string, token: string) {
+  const key = `${roomId}:${token}`;
+  const timeout = disconnectTimeouts.get(key);
+  if (timeout) {
+    clearTimeout(timeout);
+    disconnectTimeouts.delete(key);
+  }
+}
 
 function generateRoomId(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -71,9 +81,10 @@ function attachRoomCallbacks(room: Room) {
 }
 
 io.on('connection', (socket) => {
-  socket.on('create_room', ({ playerName, settings }, callback) => {
+  socket.on('create_room', ({ playerName, playerToken, settings }, callback) => {
     const roomId = generateRoomId();
-    const room = new Room(roomId, playerName, socket.id, settings);
+    const token = playerToken || socket.id;
+    const room = new Room(roomId, playerName, socket.id, token, settings);
 
     rooms.set(roomId, room);
     socketToRoom.set(socket.id, roomId);
@@ -93,19 +104,43 @@ io.on('connection', (socket) => {
     socket.emit('chat_message', welcomeMsg);
   });
 
-  socket.on('join_room', ({ roomId, playerName }, callback) => {
+  socket.on('join_room', ({ roomId, playerName, playerToken }, callback) => {
     const room = rooms.get(roomId);
     if (!room) {
       callback({ success: false, error: 'اتاق یافت نشد!' });
       return;
     }
 
-    if (room.players.some(p => p.name === playerName)) {
+    const token = playerToken || socket.id;
+
+    // Check if player with this token already exists in room
+    const existingPlayer = room.players.find(p => p.token === token);
+    if (existingPlayer) {
+      cancelPlayerDisconnectTimeout(roomId, token);
+      room.reconnectPlayer(token, socket.id);
+      socketToRoom.set(socket.id, roomId);
+      socket.join(roomId);
+
+      callback({ success: true });
+      broadcastRoomState(room);
+      socket.emit('canvas_history', room.canvasHistory);
+
+      const welcomeBackMsg: ChatMessage = {
+        id: String(Date.now()),
+        senderName: 'سیستم',
+        text: `${existingPlayer.name} مجدداً به اتاق متصل شد.`,
+        type: 'system'
+      };
+      io.to(roomId).emit('chat_message', welcomeBackMsg);
+      return;
+    }
+
+    if (room.players.some(p => p.name === playerName && !p.disconnected)) {
       callback({ success: false, error: 'این نام کاربری قبلاً در اتاق استفاده شده است.' });
       return;
     }
 
-    room.addPlayer(playerName, socket.id);
+    room.addPlayer(playerName, socket.id, token);
     socketToRoom.set(socket.id, roomId);
     socket.join(roomId);
 
@@ -122,6 +157,40 @@ io.on('connection', (socket) => {
       type: 'system'
     };
     io.to(roomId).emit('chat_message', joinMsg);
+  });
+
+  socket.on('reconnect_room', ({ roomId, playerToken }, callback) => {
+    const room = rooms.get(roomId);
+    if (!room) {
+      callback({ success: false, error: 'اتاق یافت نشد یا منقضی شده است.' });
+      return;
+    }
+
+    const reconnected = room.reconnectPlayer(playerToken, socket.id);
+    if (!reconnected) {
+      callback({ success: false, error: 'بازیکن در این اتاق یافت نشد.' });
+      return;
+    }
+
+    cancelPlayerDisconnectTimeout(roomId, playerToken);
+    socketToRoom.set(socket.id, roomId);
+    socket.join(roomId);
+
+    callback({ success: true });
+    broadcastRoomState(room);
+
+    socket.emit('canvas_history', room.canvasHistory);
+    if (room.state === 'SELECTING_WORD' && room.currentDrawerId === socket.id) {
+      socket.emit('word_options', room.wordOptions);
+    }
+
+    const reconMsg: ChatMessage = {
+      id: String(Date.now()),
+      senderName: 'سیستم',
+      text: `${reconnected.name} دوباره به بازی متصل شد.`,
+      type: 'system'
+    };
+    io.to(roomId).emit('chat_message', reconMsg);
   });
 
   socket.on('start_game', () => {
@@ -141,6 +210,33 @@ io.on('connection', (socket) => {
       if (room.currentDrawerId) {
         io.to(room.currentDrawerId).emit('word_options', room.wordOptions);
       }
+    }
+  });
+
+  socket.on('restart_game', () => {
+    const roomId = socketToRoom.get(socket.id);
+    if (!roomId) return;
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player || !player.isHost) {
+      socket.emit('error_message', 'تنها میزبان بازی می‌تواند بازی را مجدداً آغاز کند.');
+      return;
+    }
+
+    const restarted = room.restartToLobby(socket.id);
+    if (restarted) {
+      io.to(roomId).emit('clear_canvas');
+      broadcastRoomState(room);
+
+      const restartMsg: ChatMessage = {
+        id: String(Date.now()),
+        senderName: 'سیستم',
+        text: 'میزبان اتاق را برای دور جدید مجدداً راه‌اندازی کرد.',
+        type: 'system'
+      };
+      io.to(roomId).emit('chat_message', restartMsg);
     }
   });
 
@@ -256,25 +352,46 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     const leavingPlayer = room.players.find(p => p.id === socket.id);
-    room.removePlayer(socket.id);
+    if (!leavingPlayer) return;
 
-    if (room.players.length === 0) {
-      room.clearTimer();
-      rooms.delete(roomId);
-    } else {
-      if (leavingPlayer) {
-        const leaveMsg: ChatMessage = {
-          id: String(Date.now()),
-          senderName: 'سیستم',
-          text: `${leavingPlayer.name} از بازی خارج شد.`,
-          type: 'system'
-        };
-        io.to(roomId).emit('chat_message', leaveMsg);
-      }
-      broadcastRoomState(room);
+    room.markPlayerDisconnected(socket.id);
+    broadcastRoomState(room);
+
+    const tokenKey = `${roomId}:${leavingPlayer.token}`;
+    if (disconnectTimeouts.has(tokenKey)) {
+      clearTimeout(disconnectTimeouts.get(tokenKey)!);
     }
+
+    // Give 45 seconds grace period for player/host to reconnect
+    const timeout = setTimeout(() => {
+      disconnectTimeouts.delete(tokenKey);
+      const currentRoom = rooms.get(roomId);
+      if (!currentRoom) return;
+
+      const p = currentRoom.players.find(x => x.token === leavingPlayer.token);
+      if (p && p.disconnected) {
+        currentRoom.removePlayer(p.id);
+
+        if (currentRoom.players.length === 0) {
+          currentRoom.clearTimer();
+          rooms.delete(roomId);
+        } else {
+          const leaveMsg: ChatMessage = {
+            id: String(Date.now()),
+            senderName: 'سیستم',
+            text: `${p.name} به دلیل قطع طولانی ارتباط از بازی خارج شد.`,
+            type: 'system'
+          };
+          io.to(roomId).emit('chat_message', leaveMsg);
+          broadcastRoomState(currentRoom);
+        }
+      }
+    }, 45000);
+
+    disconnectTimeouts.set(tokenKey, timeout);
   });
 });
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

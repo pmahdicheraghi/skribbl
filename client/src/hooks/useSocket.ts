@@ -11,6 +11,19 @@ import type {
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
+function getPlayerToken(): string {
+  try {
+    let token = localStorage.getItem('skribbl_player_token');
+    if (!token) {
+      token = 'tok_' + Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+      localStorage.setItem('skribbl_player_token', token);
+    }
+    return token;
+  } catch {
+    return 'tok_' + Math.random().toString(36).substring(2, 11);
+  }
+}
+
 export function useSocket() {
   const socketRef = useRef<TypedSocket | null>(null);
   const [connected, setConnected] = useState(false);
@@ -29,6 +42,23 @@ export function useSocket() {
     socket.on('connect', () => {
       setConnected(true);
       setErrorMessage(null);
+
+      // Attempt auto-reconnect if returning to a room
+      try {
+        const savedRoomId = localStorage.getItem('skribbl_room_id');
+        const token = getPlayerToken();
+        const params = new URLSearchParams(window.location.search);
+        const urlRoomId = params.get('room')?.toUpperCase();
+        const targetRoomId = urlRoomId || savedRoomId;
+
+        if (targetRoomId && token) {
+          socket.emit('reconnect_room', { roomId: targetRoomId, playerToken: token }, (res) => {
+            if (!res.success) {
+              localStorage.removeItem('skribbl_room_id');
+            }
+          });
+        }
+      } catch {}
     });
 
     socket.on('disconnect', () => {
@@ -37,6 +67,9 @@ export function useSocket() {
 
     socket.on('room_state', (state) => {
       setRoomState(state);
+      try {
+        localStorage.setItem('skribbl_room_id', state.roomId);
+      } catch {}
       if (state.state !== 'SELECTING_WORD') {
         setWordOptions([]);
       }
@@ -70,7 +103,13 @@ export function useSocket() {
     ): Promise<{ success: boolean; roomId?: string; error?: string }> => {
       return new Promise((resolve) => {
         if (!socketRef.current) return resolve({ success: false, error: 'سوکت متصل نیست' });
-        socketRef.current.emit('create_room', { playerName, settings }, (res) => {
+        const playerToken = getPlayerToken();
+        socketRef.current.emit('create_room', { playerName, playerToken, settings }, (res) => {
+          if (res.success && res.roomId) {
+            try {
+              localStorage.setItem('skribbl_room_id', res.roomId);
+            } catch {}
+          }
           resolve(res);
         });
       });
@@ -85,7 +124,31 @@ export function useSocket() {
     ): Promise<{ success: boolean; error?: string }> => {
       return new Promise((resolve) => {
         if (!socketRef.current) return resolve({ success: false, error: 'سوکت متصل نیست' });
-        socketRef.current.emit('join_room', { roomId, playerName }, (res) => {
+        const playerToken = getPlayerToken();
+        socketRef.current.emit('join_room', { roomId, playerName, playerToken }, (res) => {
+          if (res.success) {
+            try {
+              localStorage.setItem('skribbl_room_id', roomId);
+            } catch {}
+          }
+          resolve(res);
+        });
+      });
+    },
+    []
+  );
+
+  const reconnectRoom = useCallback(
+    (roomId: string): Promise<{ success: boolean; error?: string }> => {
+      return new Promise((resolve) => {
+        if (!socketRef.current) return resolve({ success: false, error: 'سوکت متصل نیست' });
+        const playerToken = getPlayerToken();
+        socketRef.current.emit('reconnect_room', { roomId, playerToken }, (res) => {
+          if (res.success) {
+            try {
+              localStorage.setItem('skribbl_room_id', roomId);
+            } catch {}
+          }
           resolve(res);
         });
       });
@@ -95,6 +158,10 @@ export function useSocket() {
 
   const startGame = useCallback(() => {
     socketRef.current?.emit('start_game');
+  }, []);
+
+  const restartGame = useCallback(() => {
+    socketRef.current?.emit('restart_game');
   }, []);
 
   const selectWord = useCallback((word: string) => {
@@ -114,6 +181,17 @@ export function useSocket() {
     socketRef.current?.emit('send_guess', text);
   }, []);
 
+  const leaveRoom = useCallback(() => {
+    try {
+      localStorage.removeItem('skribbl_room_id');
+    } catch {}
+    setRoomState(null);
+    setWordOptions([]);
+    setMessages([]);
+    socketRef.current?.disconnect();
+    socketRef.current?.connect();
+  }, []);
+
   return {
     socket: socketRef.current,
     connected,
@@ -123,7 +201,10 @@ export function useSocket() {
     errorMessage,
     createRoom,
     joinRoom,
+    reconnectRoom,
+    leaveRoom,
     startGame,
+    restartGame,
     selectWord,
     drawStroke,
     clearCanvas,
@@ -131,3 +212,5 @@ export function useSocket() {
     setErrorMessage
   };
 }
+
+

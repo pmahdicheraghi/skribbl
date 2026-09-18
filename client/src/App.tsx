@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSocket } from './hooks/useSocket.js';
 import { Lobby } from './components/Lobby.js';
 import { GameView } from './components/GameView.js';
-import { WiredCard } from 'wired-elements-react';
+import { WiredCard, WiredButton } from 'wired-elements-react';
 
 export const App: React.FC = () => {
   const {
@@ -14,7 +14,9 @@ export const App: React.FC = () => {
     errorMessage,
     createRoom,
     joinRoom,
+    leaveRoom,
     startGame,
+    restartGame,
     selectWord,
     drawStroke,
     clearCanvas,
@@ -23,6 +25,7 @@ export const App: React.FC = () => {
   } = useSocket();
 
   const [initialRoomCode, setInitialRoomCode] = useState('');
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -40,6 +43,45 @@ export const App: React.FC = () => {
       window.history.replaceState({}, '', url.toString());
     }
   }, [roomState?.roomId]);
+
+  // Trap browser/hardware back button and beforeunload when in an active room
+  useEffect(() => {
+    if (!roomState?.roomId) return;
+
+    // Push state into history stack to intercept back navigation
+    window.history.pushState({ inGame: true }, '', window.location.href);
+
+    const handlePopState = () => {
+      setShowExitConfirm(true);
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [roomState?.roomId]);
+
+  const handleCancelExit = () => {
+    setShowExitConfirm(false);
+    // Push state again so the next back button press will still be trapped
+    window.history.pushState({ inGame: true }, '', window.location.href);
+  };
+
+  const handleConfirmExit = () => {
+    setShowExitConfirm(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('room');
+    window.history.replaceState({}, '', url.pathname);
+    leaveRoom();
+  };
 
   if (!connected) {
     return (
@@ -74,18 +116,51 @@ export const App: React.FC = () => {
   }
 
   return (
-    <GameView
-      roomState={roomState}
-      messages={messages}
-      wordOptions={wordOptions}
-      socket={socket}
-      onStartGame={startGame}
-      onSelectWord={selectWord}
-      onStroke={drawStroke}
-      onClear={clearCanvas}
-      onSendMessage={sendGuess}
-    />
+    <>
+      <GameView
+        roomState={roomState}
+        messages={messages}
+        wordOptions={wordOptions}
+        socket={socket}
+        onStartGame={startGame}
+        onRestartGame={restartGame}
+        onSelectWord={selectWord}
+        onStroke={drawStroke}
+        onClear={clearCanvas}
+        onSendMessage={sendGuess}
+      />
+
+      {showExitConfirm && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <WiredCard elevation={4} style={{ textAlign: 'center', maxWidth: '380px', width: '90%', padding: '24px' }}>
+            <h3 style={{ color: '#e67e22', marginBottom: '12px', fontSize: '1.3rem' }}>
+              ⚠️ خروج از بازی؟
+            </h3>
+            <p style={{ color: '#4b5563', marginBottom: '20px', fontSize: '0.95rem', lineHeight: 1.5 }}>
+              آیا مطمئن هستید که می‌خواهید از اتاق بازی خارج شوید؟
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <WiredButton
+                elevation={2}
+                onClick={handleCancelExit}
+                style={{ flex: 1, fontWeight: 700 }}
+              >
+                ادامه بازی
+              </WiredButton>
+              <WiredButton
+                elevation={2}
+                onClick={handleConfirmExit}
+                style={{ flex: 1, color: '#dc2626', fontWeight: 700 }}
+              >
+                خروج
+              </WiredButton>
+            </div>
+          </WiredCard>
+        </div>
+      )}
+    </>
   );
 };
 
 export default App;
+

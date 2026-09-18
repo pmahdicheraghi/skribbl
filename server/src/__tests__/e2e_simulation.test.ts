@@ -165,3 +165,137 @@ test('End-to-End WebSocket game loop with 2 players', async () => {
   }
   await new Promise<void>((resolve) => server.close(() => resolve()));
 });
+
+test('End-to-End WebSocket host reconnect and game restart', async () => {
+  const app = express();
+  const server = http.createServer(app);
+  const io = new Server<ClientToServerEvents, ServerToClientEvents>(server);
+
+  const rooms = new Map<string, Room>();
+  const socketToRoom = new Map<string, string>();
+
+  io.on('connection', (socket) => {
+    socket.on('create_room', ({ playerName, playerToken, settings }, callback) => {
+      const roomId = 'TEST-RECON';
+      const token = playerToken || socket.id;
+      const room = new Room(roomId, playerName, socket.id, token, settings);
+      rooms.set(roomId, room);
+      socketToRoom.set(socket.id, roomId);
+      socket.join(roomId);
+
+      callback({ success: true, roomId });
+      for (const p of room.players) {
+        io.to(p.id).emit('room_state', room.getPublicState(p.id));
+      }
+    });
+
+    socket.on('join_room', ({ roomId, playerName, playerToken }, callback) => {
+      const room = rooms.get(roomId);
+      if (!room) return callback({ success: false, error: 'Not found' });
+      const token = playerToken || socket.id;
+      room.addPlayer(playerName, socket.id, token);
+      socketToRoom.set(socket.id, roomId);
+      socket.join(roomId);
+      callback({ success: true });
+      for (const p of room.players) {
+        io.to(p.id).emit('room_state', room.getPublicState(p.id));
+      }
+    });
+
+    socket.on('reconnect_room', ({ roomId, playerToken }, callback) => {
+      const room = rooms.get(roomId);
+      if (!room) return callback({ success: false, error: 'Not found' });
+      const reconnected = room.reconnectPlayer(playerToken, socket.id);
+      if (!reconnected) return callback({ success: false, error: 'Player not found' });
+      socketToRoom.set(socket.id, roomId);
+      socket.join(roomId);
+      callback({ success: true });
+      for (const p of room.players) {
+        io.to(p.id).emit('room_state', room.getPublicState(p.id));
+      }
+    });
+
+    socket.on('restart_game', () => {
+      const roomId = socketToRoom.get(socket.id);
+      if (!roomId) return;
+      const room = rooms.get(roomId);
+      if (!room) return;
+      room.restartToLobby(socket.id);
+      for (const p of room.players) {
+        io.to(p.id).emit('room_state', room.getPublicState(p.id));
+      }
+    });
+  });
+
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  const address = server.address() as { port: number };
+  const url = `http://localhost:${address.port}`;
+
+  const hostToken = 'tok_host_xyz';
+  const guestToken = 'tok_guest_abc';
+
+  // 1. Host creates room
+  const client1 = ClientIO(url, { transports: ['websocket'] });
+  await new Promise<void>((res) => client1.on('connect', () => res()));
+
+  let roomId = '';
+  await new Promise<void>((resolve) => {
+    client1.emit('create_room', { playerName: 'AliHost', playerToken: hostToken }, (res: { success: boolean; roomId?: string }) => {
+      roomId = res.roomId!;
+      resolve();
+    });
+  });
+
+  // 2. Guest joins
+  const client2 = ClientIO(url, { transports: ['websocket'] });
+  await new Promise<void>((res) => client2.on('connect', () => res()));
+  await new Promise<void>((resolve) => {
+    client2.emit('join_room', { roomId, playerName: 'SaraGuest', playerToken: guestToken }, () => resolve());
+  });
+
+  // 3. Host disconnects (e.g. browser refresh)
+  client1.disconnect();
+
+  // 4. Host reconnects via new socket connection using same token
+  const client1Reconnected = ClientIO(url, { transports: ['websocket'] });
+  await new Promise<void>((res) => client1Reconnected.on('connect', () => res()));
+
+  const reconStatePromise = new Promise<RoomPublicState>((resolve) => {
+    client1Reconnected.on('room_state', (state) => {
+      resolve(state);
+    });
+  });
+
+  await new Promise<void>((resolve) => {
+    client1Reconnected.emit('reconnect_room', { roomId, playerToken: hostToken }, (res: { success: boolean; error?: string }) => {
+      assert.equal(res.success, true);
+      resolve();
+    });
+  });
+
+
+  const stateAfterRecon = await reconStatePromise;
+  const hostPlayer = stateAfterRecon.players.find((p) => p.name === 'AliHost');
+  assert.ok(hostPlayer);
+  assert.equal(hostPlayer.isHost, true);
+
+  // 5. Host restarts game
+  const resetStatePromise = new Promise<RoomPublicState>((resolve) => {
+    client2.on('room_state', (state) => {
+      if (state.state === 'LOBBY') resolve(state);
+    });
+  });
+  client1Reconnected.emit('restart_game');
+  const resetState = await resetStatePromise;
+  assert.equal(resetState.state, 'LOBBY');
+  assert.equal(resetState.players.length, 2);
+
+  // Cleanup
+  client1Reconnected.disconnect();
+  client2.disconnect();
+  for (const r of rooms.values()) {
+    r.clearTimer();
+  }
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+});
+

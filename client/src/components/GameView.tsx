@@ -18,6 +18,7 @@ interface GameViewProps {
   wordOptions: string[];
   socket: Socket | null;
   onStartGame: () => void;
+  onRestartGame?: () => void;
   onSelectWord: (word: string) => void;
   onStroke: (stroke: DrawStroke) => void;
   onClear: () => void;
@@ -30,6 +31,7 @@ export const GameView: React.FC<GameViewProps> = ({
   wordOptions,
   socket,
   onStartGame,
+  onRestartGame,
   onSelectWord,
   onStroke,
   onClear,
@@ -82,8 +84,8 @@ export const GameView: React.FC<GameViewProps> = ({
             </span>
           </RoughPill>
 
-          <RoughBanner stroke="#2c3e50" strokeWidth={1.6} fill="#ffffff" notchSize={8}>
-            <span style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '2px', color: '#2c3e50', textAlign: 'center', whiteSpace: 'nowrap' }}>
+          <RoughBanner stroke="#2c3e50" strokeWidth={1.6} fill="#ffffff" notchSize={8} style={{ maxWidth: '100%', minWidth: 0, flexShrink: 1 }}>
+            <span style={{ fontSize: '1rem', fontWeight: 800, letterSpacing: '1px', color: '#2c3e50', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {getWordDisplayText()}
             </span>
           </RoughBanner>
@@ -263,9 +265,31 @@ export const GameView: React.FC<GameViewProps> = ({
                         );
                       })}
                   </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {isHost ? (
+                      <WiredButton
+                        elevation={3}
+                        onClick={onRestartGame}
+                        style={{
+                          fontSize: '1.15rem',
+                          fontWeight: 700,
+                          color: '#059669',
+                          width: '100%'
+                        }}
+                      >
+                        🔄 شروع دور جدید با همین بازیکنان
+                      </WiredButton>
+                    ) : (
+                      <div style={{ padding: '10px', background: '#f3f4f6', borderRadius: '6px', fontSize: '0.92rem', color: '#4b5563' }}>
+                        ⏳ در انتظار میزبان برای شروع دور جدید...
+                      </div>
+                    )}
+                  </div>
                 </WiredCard>
               </div>
             )}
+
           </div>
         </section>
 

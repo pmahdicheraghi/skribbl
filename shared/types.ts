@@ -1,9 +1,13 @@
+export type WordDifficulty = 'easy' | 'medium' | 'hard' | 'all';
+
 export interface Player {
   id: string;
+  token: string;
   name: string;
   score: number;
   isHost: boolean;
   hasGuessedCorrectly: boolean;
+  disconnected?: boolean;
 }
 
 export type GameState =
@@ -28,6 +32,7 @@ export interface RoomSettings {
   maxRounds: number;
   roundDurationSec: number;
   customWords: string[];
+  wordDifficulty?: WordDifficulty;
 }
 
 export interface RoomPublicState {
@@ -52,14 +57,19 @@ export interface ChatMessage {
 
 export interface ClientToServerEvents {
   create_room: (
-    data: { playerName: string; settings?: Partial<RoomSettings> },
+    data: { playerName: string; playerToken?: string; settings?: Partial<RoomSettings> },
     callback: (res: { success: boolean; roomId?: string; error?: string }) => void
   ) => void;
   join_room: (
-    data: { roomId: string; playerName: string },
+    data: { roomId: string; playerName: string; playerToken?: string },
+    callback: (res: { success: boolean; error?: string }) => void
+  ) => void;
+  reconnect_room: (
+    data: { roomId: string; playerToken: string },
     callback: (res: { success: boolean; error?: string }) => void
   ) => void;
   start_game: () => void;
+  restart_game: () => void;
   select_word: (word: string) => void;
   draw_stroke: (stroke: DrawStroke) => void;
   clear_canvas: () => void;

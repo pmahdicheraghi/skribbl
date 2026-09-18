@@ -123,3 +123,39 @@ test('Player who guessed correctly sees full secret word while others see mask',
   const rezaState = room.getPublicState('socket_3');
   assert.equal(rezaState.wordMask, '_ _ _ _');
 });
+
+test('Room reconnects host preserving isHost status and score', () => {
+  const room = new Room('R_RECON', 'Ali', 'socket_old', 'token_host_123');
+  room.addPlayer('Sara', 'socket_2', 'token_sara_456');
+
+  // Mark host disconnected
+  room.markPlayerDisconnected('socket_old');
+  assert.equal(room.players[0].disconnected, true);
+
+  // Host reconnects with new socket ID
+  const reconnected = room.reconnectPlayer('token_host_123', 'socket_new');
+  assert.ok(reconnected);
+  assert.equal(reconnected.id, 'socket_new');
+  assert.equal(reconnected.isHost, true);
+  assert.equal(reconnected.disconnected, false);
+});
+
+test('Room restartToLobby resets scores and round while keeping players', () => {
+  const room = new Room('R_RESET', 'Ali', 'socket_1');
+  room.addPlayer('Sara', 'socket_2');
+  room.players[0].score = 250;
+  room.players[1].score = 180;
+  room.state = 'GAME_OVER';
+
+  const nonHostSuccess = room.restartToLobby('socket_2');
+  assert.equal(nonHostSuccess, false);
+
+  const hostSuccess = room.restartToLobby('socket_1');
+  assert.equal(hostSuccess, true);
+  assert.equal(room.state, 'LOBBY');
+  assert.equal(room.currentRound, 1);
+  assert.equal(room.players[0].score, 0);
+  assert.equal(room.players[1].score, 0);
+  assert.equal(room.players.length, 2);
+});
+

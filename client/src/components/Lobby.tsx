@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { RoomSettings } from '../../../shared/types.js';
+import type { RoomSettings, WordDifficulty } from '../../../shared/types.js';
 import {
   WiredButton,
   WiredCard,
@@ -39,6 +39,7 @@ export const Lobby: React.FC<LobbyProps> = ({
   // Settings
   const [maxRounds, setMaxRounds] = useState<number>(3);
   const [roundDurationSec, setRoundDurationSec] = useState<number>(80);
+  const [wordDifficulty, setWordDifficulty] = useState<WordDifficulty>('all');
   const [customWordsText, setCustomWordsText] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -64,6 +65,7 @@ export const Lobby: React.FC<LobbyProps> = ({
     const res = await onCreateRoom(playerName.trim(), {
       maxRounds,
       roundDurationSec,
+      wordDifficulty,
       customWords
     });
 
@@ -232,6 +234,33 @@ export const Lobby: React.FC<LobbyProps> = ({
                 </WiredRadio>
                 <WiredRadio name="100" checked={roundDurationSec === 100} onClick={() => setRoundDurationSec(100)}>
                   <span className="radio-label">۱۰۰ ثانیه</span>
+                </WiredRadio>
+              </WiredRadioGroup>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: '6px' }}>
+                سطح سختی کلمات:
+              </label>
+              <WiredRadioGroup
+                selected={wordDifficulty}
+                onselected={(e: any) => {
+                  const val = e.detail?.selected;
+                  if (val) setWordDifficulty(val as WordDifficulty);
+                }}
+                style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}
+              >
+                <WiredRadio name="easy" checked={wordDifficulty === 'easy'} onClick={() => setWordDifficulty('easy')}>
+                  <span className="radio-label">🟢 آسان</span>
+                </WiredRadio>
+                <WiredRadio name="medium" checked={wordDifficulty === 'medium'} onClick={() => setWordDifficulty('medium')}>
+                  <span className="radio-label">🟡 متوسط</span>
+                </WiredRadio>
+                <WiredRadio name="hard" checked={wordDifficulty === 'hard'} onClick={() => setWordDifficulty('hard')}>
+                  <span className="radio-label">🔴 سخت</span>
+                </WiredRadio>
+                <WiredRadio name="all" checked={wordDifficulty === 'all'} onClick={() => setWordDifficulty('all')}>
+                  <span className="radio-label">🎲 همه سطوح</span>
                 </WiredRadio>
               </WiredRadioGroup>
             </div>

@@ -46,3 +46,14 @@ test('getRandomPersianWords incorporates custom words if provided', () => {
     assert.ok(pool.includes(word));
   }
 });
+
+test('getRandomPersianWords filters by difficulty', () => {
+  const easyWords = getRandomPersianWords(5, [], 'easy');
+  assert.equal(easyWords.length, 5);
+
+  const hardWords = getRandomPersianWords(5, [], 'hard');
+  assert.equal(hardWords.length, 5);
+
+  assert.ok(PERSIAN_WORD_BANK.length > 200);
+});
+

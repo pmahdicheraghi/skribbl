@@ -40,21 +40,34 @@ export class Room {
     roomId: string,
     hostName: string,
     hostSocketId: string,
+    hostTokenOrSettings?: string | Partial<RoomSettings>,
     settings?: Partial<RoomSettings>
   ) {
     this.roomId = roomId;
+    let token = hostSocketId;
+    let s: Partial<RoomSettings> | undefined = settings;
+
+    if (typeof hostTokenOrSettings === 'string') {
+      token = hostTokenOrSettings;
+    } else if (typeof hostTokenOrSettings === 'object') {
+      s = hostTokenOrSettings;
+    }
+
     this.settings = {
-      maxRounds: settings?.maxRounds ?? 3,
-      roundDurationSec: settings?.roundDurationSec ?? 80,
-      customWords: settings?.customWords ?? []
+      maxRounds: s?.maxRounds ?? 3,
+      roundDurationSec: s?.roundDurationSec ?? 80,
+      customWords: s?.customWords ?? [],
+      wordDifficulty: s?.wordDifficulty ?? 'all'
     };
 
     this.players.push({
       id: hostSocketId,
+      token,
       name: hostName,
       score: 0,
       isHost: true,
-      hasGuessedCorrectly: false
+      hasGuessedCorrectly: false,
+      disconnected: false
     });
   }
 
@@ -66,16 +79,42 @@ export class Room {
     this.timerTickCallback = callbacks.onTimerTick;
   }
 
-  public addPlayer(name: string, socketId: string): Player {
+  public addPlayer(name: string, socketId: string, token?: string): Player {
     const isHost = this.players.length === 0;
     const player: Player = {
       id: socketId,
+      token: token || socketId,
       name,
       score: 0,
       isHost,
-      hasGuessedCorrectly: false
+      hasGuessedCorrectly: false,
+      disconnected: false
     };
     this.players.push(player);
+    return player;
+  }
+
+  public reconnectPlayer(token: string, newSocketId: string): Player | null {
+    const player = this.players.find(p => p.token === token);
+    if (!player) return null;
+
+    const oldSocketId = player.id;
+    player.id = newSocketId;
+    player.disconnected = false;
+
+    if (this.currentDrawerId === oldSocketId) {
+      this.currentDrawerId = newSocketId;
+    }
+
+    this.stateChangeCallback?.();
+    return player;
+  }
+
+  public markPlayerDisconnected(socketId: string): Player | null {
+    const player = this.players.find(p => p.id === socketId);
+    if (!player) return null;
+    player.disconnected = true;
+    this.stateChangeCallback?.();
     return player;
   }
 
@@ -89,7 +128,8 @@ export class Room {
     this.players.splice(index, 1);
 
     if (wasHost && this.players.length > 0) {
-      this.players[0].isHost = true;
+      const nextHost = this.players.find(p => !p.disconnected) || this.players[0];
+      if (nextHost) nextHost.isHost = true;
     }
 
     if (this.players.length < 2 && (this.state === 'DRAWING' || this.state === 'SELECTING_WORD')) {
@@ -139,7 +179,7 @@ export class Room {
     const drawer = this.players[this.currentDrawerIndex];
     this.currentDrawerId = drawer ? drawer.id : null;
 
-    this.wordOptions = getRandomPersianWords(3, this.settings.customWords);
+    this.wordOptions = getRandomPersianWords(3, this.settings.customWords, this.settings.wordDifficulty);
     this.secondsLeft = 15;
 
     this.stateChangeCallback?.();
