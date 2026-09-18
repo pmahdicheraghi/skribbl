@@ -251,16 +251,13 @@ export const Lobby: React.FC<LobbyProps> = ({
                 style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}
               >
                 <WiredRadio name="easy" checked={wordDifficulty === 'easy'} onClick={() => setWordDifficulty('easy')}>
-                  <span className="radio-label">🟢 آسان</span>
+                  <span className="radio-label">آسان</span>
                 </WiredRadio>
                 <WiredRadio name="medium" checked={wordDifficulty === 'medium'} onClick={() => setWordDifficulty('medium')}>
-                  <span className="radio-label">🟡 متوسط</span>
+                  <span className="radio-label">متوسط</span>
                 </WiredRadio>
                 <WiredRadio name="hard" checked={wordDifficulty === 'hard'} onClick={() => setWordDifficulty('hard')}>
-                  <span className="radio-label">🔴 سخت</span>
-                </WiredRadio>
-                <WiredRadio name="all" checked={wordDifficulty === 'all'} onClick={() => setWordDifficulty('all')}>
-                  <span className="radio-label">🎲 همه سطوح</span>
+                  <span className="radio-label">سخت</span>
                 </WiredRadio>
               </WiredRadioGroup>
             </div>

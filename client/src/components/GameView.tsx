@@ -154,7 +154,7 @@ export const GameView: React.FC<GameViewProps> = ({
               <div className="modal-overlay" style={{ background: 'rgba(255, 255, 255, 0.88)' }}>
                 <WiredCard elevation={3} style={{ textAlign: 'center', maxWidth: '440px', width: '90%', padding: '24px' }}>
                   <h2 style={{ marginBottom: '10px', color: '#e67e22', fontSize: '1.5rem' }}>
-                    ✏️ اتاق بازی آماده است!
+                    اتاق بازی آماده است!
                   </h2>
 
                   <RoughBox stroke="#d1d5db" strokeWidth={1.2} fill="#fafaf9" style={{ width: '100%', margin: '14px 0' }}>
