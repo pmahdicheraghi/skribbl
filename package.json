@@ -1,0 +1,14 @@
+{
+  "name": "persian-skribbl",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Persian Skribbl.io clone with Wired Elements",
+  "scripts": {
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build && npm --prefix server run build",
+    "start": "npm --prefix server start",
+    "test": "npm --prefix server test"
+  }
+}
