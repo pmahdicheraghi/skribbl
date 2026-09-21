@@ -1,10 +1,9 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { DrawStroke, DrawPoint } from '../../../shared/types.js';
 import type { Socket } from 'socket.io-client';
-import { WiredButton } from 'wired-elements-react';
-import { RoughBox } from './rough/RoughBox.js';
-import { RoughDivider } from './rough/RoughDivider.js';
+import { WiredCard, WiredButton } from 'wired-elements-react';
 import { RoughPill } from './rough/RoughPill.js';
+
 
 const PEN_SIZE = 3;
 const ERASER_SIZE = 18;
@@ -23,6 +22,31 @@ interface CanvasProps {
   onClear: () => void;
   socket: Socket | null;
 }
+
+const PencilIcon: React.FC<{ size?: number; color?: string }> = ({ size = 20, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    <path d="m15 5 4 4" />
+  </svg>
+);
+
+const EraserIcon: React.FC<{ size?: number; color?: string }> = ({ size = 20, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" />
+    <path d="M22 21H7" />
+    <path d="m5 11 9 9" />
+  </svg>
+);
+
+const TrashIcon: React.FC<{ size?: number; color?: string }> = ({ size = 20, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 6h18" />
+    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+    <line x1="10" x2="10" y1="11" y2="17" />
+    <line x1="14" x2="14" y1="11" y2="17" />
+  </svg>
+);
 
 export const Canvas: React.FC<CanvasProps> = ({
   isDrawer,
@@ -274,8 +298,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, minWidth: 0, height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="canvas-box">
+    <div className="canvas-inner-container">
+      <WiredCard elevation={2} className="canvas-wired-card">
         <canvas
           ref={canvasRef}
           onPointerDown={startDrawing}
@@ -289,97 +313,71 @@ export const Canvas: React.FC<CanvasProps> = ({
         />
         {!isDrawer && (
           <div style={{ position: 'absolute', top: 10, right: 10, pointerEvents: 'none' }}>
-            <RoughPill stroke="#94a3b8" strokeWidth={1.2} fill="rgba(255, 255, 255, 0.92)">
-              <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 700 }}>
-                👀 حالت تماشاچی (نوبت نقاشی شما نیست)
+            <RoughPill stroke="#94a3b8" strokeWidth={1.2} fill="rgba(255, 255, 255, 0.94)">
+              <span style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 700, padding: '0 4px' }}>
+                👀 حالت تماشاچی
               </span>
             </RoughPill>
           </div>
         )}
-      </div>
+      </WiredCard>
 
       {isDrawer && (
-        <div style={{ flexShrink: 0, marginTop: '6px', width: '100%', maxWidth: '800px', margin: '6px auto 0' }}>
-          <RoughBox
-            stroke="#475569"
-            strokeWidth={1.3}
-            fill="#ffffff"
-            style={{ width: '100%' }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '4px 8px',
-                gap: '8px',
-                flexWrap: 'wrap'
-              }}
-            >
-              {/* Tool Selection (Pen / Eraser / Clear) */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                <WiredButton
-                  elevation={tool === 'pen' ? 3 : 1}
-                  onClick={() => setTool('pen')}
-                  style={{
-                    color: tool === 'pen' ? '#e67e22' : 'inherit',
-                    fontSize: '0.82rem'
-                  }}
-                >
-                  <span style={{ whiteSpace: 'nowrap' }}>✏️ قلم</span>
-                </WiredButton>
+        <WiredCard elevation={1} className="tools-wired-card">
+          <div className="canvas-tools-bar">
+            {/* Tool Selection (Pen / Eraser / Clear) */}
+            <div className="canvas-tools-group">
+              <WiredButton
+                elevation={tool === 'pen' ? 3 : 1}
+                className={`tool-wired-btn ${tool === 'pen' ? 'active' : ''}`}
+                onClick={() => setTool('pen')}
+              >
+                <span title="قلم" style={{ display: 'flex', alignItems: 'center' }}>
+                  <PencilIcon size={19} color={tool === 'pen' ? '#ea580c' : '#334155'} />
+                </span>
+              </WiredButton>
 
-                <WiredButton
-                  elevation={tool === 'eraser' ? 3 : 1}
-                  onClick={() => setTool('eraser')}
-                  style={{
-                    color: tool === 'eraser' ? '#e67e22' : 'inherit',
-                    fontSize: '0.82rem'
-                  }}
-                >
-                  <span style={{ whiteSpace: 'nowrap' }}>🧹 پاک‌کن</span>
-                </WiredButton>
+              <WiredButton
+                elevation={tool === 'eraser' ? 3 : 1}
+                className={`tool-wired-btn ${tool === 'eraser' ? 'active' : ''}`}
+                onClick={() => setTool('eraser')}
+              >
+                <span title="پاک‌کن" style={{ display: 'flex', alignItems: 'center' }}>
+                  <EraserIcon size={19} color={tool === 'eraser' ? '#ea580c' : '#334155'} />
+                </span>
+              </WiredButton>
 
-                <WiredButton
-                  elevation={1}
-                  onClick={handleClear}
-                  style={{
-                    color: '#dc2626',
-                    fontSize: '0.82rem'
-                  }}
-                >
-                  <span style={{ whiteSpace: 'nowrap' }}>🗑️ پاک‌کردن</span>
-                </WiredButton>
-              </div>
-
-              {/* 6 Colors Palette */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, justifyContent: 'center' }}>
-                {PALETTE_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => {
-                      setSelectedColor(c);
-                      setTool('pen');
-                    }}
-                    title={c}
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      backgroundColor: c,
-                      border: selectedColor === c && tool === 'pen' ? '2.5px solid #e67e22' : '1.5px solid #94a3b8',
-                      cursor: 'pointer',
-                      transform: selectedColor === c && tool === 'pen' ? 'scale(1.18)' : 'scale(1)',
-                      transition: 'transform 0.1s ease',
-                      boxShadow: selectedColor === c && tool === 'pen' ? '0 0 5px rgba(230,126,34,0.7)' : 'none'
-                    }}
-                  />
-                ))}
-              </div>
+              <WiredButton
+                elevation={1}
+                className="tool-wired-btn danger"
+                onClick={handleClear}
+              >
+                <span title="پاک‌کردن کل صفحه" style={{ display: 'flex', alignItems: 'center' }}>
+                  <TrashIcon size={19} color="#dc2626" />
+                </span>
+              </WiredButton>
             </div>
-          </RoughBox>
-        </div>
+
+            <div className="canvas-tools-divider" />
+
+            {/* 6 Colors Palette */}
+            <div className="canvas-palette-group">
+              {PALETTE_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`palette-color-dot ${selectedColor === c && tool === 'pen' ? 'active' : ''}`}
+                  onClick={() => {
+                    setSelectedColor(c);
+                    setTool('pen');
+                  }}
+                  title={c}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+          </div>
+        </WiredCard>
       )}
     </div>
   );

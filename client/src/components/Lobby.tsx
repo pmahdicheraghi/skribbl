@@ -39,7 +39,7 @@ export const Lobby: React.FC<LobbyProps> = ({
   // Settings
   const [maxRounds, setMaxRounds] = useState<number>(3);
   const [roundDurationSec, setRoundDurationSec] = useState<number>(80);
-  const [wordDifficulty, setWordDifficulty] = useState<WordDifficulty>('all');
+  const [wordDifficulty, setWordDifficulty] = useState<WordDifficulty>('medium');
   const [customWordsText, setCustomWordsText] = useState('');
   const [loading, setLoading] = useState(false);
 

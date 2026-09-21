@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { ChatMessage } from '../../../shared/types.js';
-import { WiredCard, WiredButton, WiredInput } from 'wired-elements-react';
-import { RoughSpeechBubble } from './rough/RoughSpeechBubble.js';
-import { RoughBanner } from './rough/RoughBanner.js';
+import { WiredButton, WiredInput } from 'wired-elements-react';
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -54,66 +52,29 @@ export const Chat: React.FC<ChatProps> = ({
         {messages.map((msg) => {
           if (msg.type === 'system') {
             return (
-              <RoughBanner
-                key={msg.id}
-                stroke="#94a3b8"
-                strokeWidth={1.2}
-                fill="#f1f5f9"
-                notchSize={8}
-                style={{ width: '100%', margin: '4px 0' }}
-              >
-                <div style={{ fontSize: '0.88rem', color: '#475569', textAlign: 'center' }}>
-                  📢 {msg.text}
-                </div>
-              </RoughBanner>
+              <div key={msg.id} className="chat-msg system">
+                📢 {msg.text}
+              </div>
             );
           }
           if (msg.type === 'correct') {
             return (
-              <RoughSpeechBubble
-                key={msg.id}
-                tailPosition="none"
-                stroke="#10b981"
-                strokeWidth={1.8}
-                fill="#ecfdf5"
-                style={{ width: '100%', margin: '4px 0' }}
-              >
-                <div style={{ fontSize: '0.95rem', color: '#065f46', fontWeight: 700, textAlign: 'center' }}>
-                  🎉 {msg.text}
-                </div>
-              </RoughSpeechBubble>
+              <div key={msg.id} className="chat-msg correct">
+                🎉 {msg.text}
+              </div>
             );
           }
           if (msg.type === 'close') {
             return (
-              <RoughSpeechBubble
-                key={msg.id}
-                tailPosition="none"
-                stroke="#f59e0b"
-                strokeWidth={1.8}
-                fill="#fefce8"
-                style={{ width: '100%', margin: '4px 0' }}
-              >
-                <div style={{ fontSize: '0.95rem', color: '#854d0e', fontWeight: 700, textAlign: 'center' }}>
-                  💡 {msg.text}
-                </div>
-              </RoughSpeechBubble>
+              <div key={msg.id} className="chat-msg close">
+                💡 {msg.text}
+              </div>
             );
           }
           return (
-            <div key={msg.id} style={{ display: 'flex', justifyContent: 'flex-start', margin: '4px 0' }}>
-              <RoughSpeechBubble
-                tailPosition="bottom-right"
-                stroke="#374151"
-                strokeWidth={1.3}
-                fill="#ffffff"
-                style={{ maxWidth: '90%' }}
-              >
-                <div style={{ fontSize: '0.95rem', lineHeight: 1.4 }}>
-                  <strong style={{ color: '#d97706', marginLeft: '4px' }}>{msg.senderName}:</strong>
-                  <span>{msg.text}</span>
-                </div>
-              </RoughSpeechBubble>
+            <div key={msg.id} className="chat-msg user">
+              <strong className="chat-msg-sender">{msg.senderName}:</strong>
+              <span className="chat-msg-text">{msg.text}</span>
             </div>
           );
         })}
@@ -142,7 +103,7 @@ export const Chat: React.FC<ChatProps> = ({
           elevation={2}
           onClick={() => handleSubmit()}
           disabled={isDrawer || !inputText.trim()}
-          style={{ whiteSpace: 'nowrap' }}
+          style={{ whiteSpace: 'nowrap', minWidth: '58px' }}
         >
           ارسال
         </WiredButton>

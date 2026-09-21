@@ -38,7 +38,6 @@ export const GameView: React.FC<GameViewProps> = ({
   onSendMessage
 }) => {
   const [copied, setCopied] = useState(false);
-  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
 
   const currentSocketId = socket?.id;
   const isDrawer = roomState.currentDrawerId === currentSocketId;
@@ -71,55 +70,37 @@ export const GameView: React.FC<GameViewProps> = ({
 
   return (
     <div className="game-screen">
-      {/* Top Header */}
+      {/* Top Header: Balanced Layout */}
       <header className="header-bar">
-        <div className="logo">
-          <span>اسکربل</span>
+        <div className="header-brand">
+          <span className="logo">اسکربل</span>
         </div>
 
-        <div className="game-meta">
-          <RoughPill stroke="#cbd5e1" strokeWidth={1.2} fill="#ffffff">
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4b5563', whiteSpace: 'nowrap' }}>
-              دور {roomState.currentRound}/{roomState.maxRounds}
+        <div className="header-center">
+          <RoughPill stroke="#2c3e50" strokeWidth={1.5} fill="#ffffff">
+            <span style={{ fontSize: '1rem', fontWeight: 800, color: '#2c3e50', padding: '0 8px', whiteSpace: 'nowrap' }}>
+              {getWordDisplayText()}
             </span>
           </RoughPill>
 
-          <RoughBanner stroke="#2c3e50" strokeWidth={1.6} fill="#ffffff" notchSize={8} style={{ maxWidth: '100%', minWidth: 0, flexShrink: 1 }}>
-            <span style={{ fontSize: '1rem', fontWeight: 800, letterSpacing: '1px', color: '#2c3e50', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {getWordDisplayText()}
-            </span>
-          </RoughBanner>
-
-          <RoughPill stroke="#d35400" strokeWidth={1.5} fill="#fdf2e9">
-            <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#d35400', whiteSpace: 'nowrap' }}>
+          <RoughPill stroke="#d35400" strokeWidth={1.4} fill="#fdf2e9">
+            <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#d35400', padding: '0 6px', whiteSpace: 'nowrap' }}>
               ⏱️ {roomState.secondsLeft} ثانیه
             </span>
           </RoughPill>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <WiredButton elevation={1} onClick={handleCopyLink} style={{ fontSize: '0.9rem' }}>
-            {copied ? '✅ کپی شد!' : '🔗 دعوت'}
-          </WiredButton>
-
-          {/* Mobile Chat Toggle Button */}
-          <div className="mobile-chat-toggle">
-            <WiredButton
-              elevation={2}
-              onClick={() => setIsMobileChatOpen(true)}
-              style={{ color: '#2563eb', fontWeight: 700, fontSize: '0.9rem' }}
-            >
-              💬 چت
-            </WiredButton>
-          </div>
+        <div className="header-left">
+          <RoughPill stroke="#94a3b8" strokeWidth={1.2} fill="#ffffff">
+            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#475569', padding: '0 6px', whiteSpace: 'nowrap' }}>
+              دور {roomState.currentRound}/{roomState.maxRounds}
+            </span>
+          </RoughPill>
         </div>
       </header>
 
-      {/* Hand-drawn divider below header */}
-      <RoughDivider stroke="#cfc9b4" strokeWidth={1.8} style={{ margin: 0, flexShrink: 0 }} />
-
       {/* Main Game Layout (Flexbox) */}
-      <main className="game-layout">
+      <main className={`game-layout ${isDrawer ? 'role-drawer' : 'role-guesser'}`}>
         {/* Canvas Section */}
         <section className="canvas-section">
           {/* Mobile Players Bar (Visible only on mobile screen) */}
@@ -293,56 +274,33 @@ export const GameView: React.FC<GameViewProps> = ({
           </div>
         </section>
 
-        {/* Desktop Sidebar (Combined Players + Chat) */}
-        <aside className="desktop-sidebar">
-          <div className="desktop-sidebar-card">
-            {/* Top: Compact Players Bar */}
-            <PlayerList
-              players={roomState.players}
-              currentDrawerId={roomState.currentDrawerId}
-              currentUserId={currentSocketId}
-            />
+        {/* Sidebar (Combined Players + Chat on Desktop; Chat under Canvas on Mobile) */}
+        <aside className="game-sidebar">
+          <WiredCard elevation={2} className="game-sidebar-wired">
+            <div className="game-sidebar-inner">
+              {/* Desktop Players Bar (hidden on mobile) */}
+              <div className="sidebar-players-desktop">
+                <PlayerList
+                  players={roomState.players}
+                  currentDrawerId={roomState.currentDrawerId}
+                  currentUserId={currentSocketId}
+                />
+                <RoughDivider stroke="#d1ccb8" strokeWidth={1.4} style={{ margin: '4px 0', flexShrink: 0 }} />
+              </div>
 
-            {/* Hand-drawn Rough Line Divider */}
-            <RoughDivider stroke="#d1ccb8" strokeWidth={1.4} style={{ margin: '4px 0', flexShrink: 0 }} />
-
-            {/* Bottom: Chat Feed */}
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <Chat
-                messages={messages}
-                onSendMessage={onSendMessage}
-                isDrawer={isDrawer && roomState.state === 'DRAWING'}
-                hasGuessedCorrectly={hasGuessedCorrectly}
-              />
+              {/* Chat Feed */}
+              <div className="sidebar-chat-wrapper">
+                <Chat
+                  messages={messages}
+                  onSendMessage={onSendMessage}
+                  isDrawer={isDrawer && roomState.state === 'DRAWING'}
+                  hasGuessedCorrectly={hasGuessedCorrectly}
+                />
+              </div>
             </div>
-          </div>
+          </WiredCard>
         </aside>
       </main>
-
-      {/* Mobile Chat Slide-out Drawer */}
-      {isMobileChatOpen && (
-        <div className="mobile-chat-backdrop" onClick={() => setIsMobileChatOpen(false)}>
-          <div className="mobile-chat-drawer" onClick={(e) => e.stopPropagation()}>
-            <div className="mobile-chat-topbar">
-              <span style={{ fontWeight: 800, fontSize: '1.15rem', color: '#1e293b' }}>
-                💬 گفتگوی بازی
-              </span>
-              <WiredButton elevation={1} onClick={() => setIsMobileChatOpen(false)} style={{ fontSize: '0.85rem' }}>
-                ✕ بستن
-              </WiredButton>
-            </div>
-            <RoughDivider stroke="#d1ccb8" strokeWidth={1.4} style={{ margin: '6px 0', flexShrink: 0 }} />
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <Chat
-                messages={messages}
-                onSendMessage={onSendMessage}
-                isDrawer={isDrawer && roomState.state === 'DRAWING'}
-                hasGuessedCorrectly={hasGuessedCorrectly}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
