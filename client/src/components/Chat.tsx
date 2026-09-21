@@ -47,7 +47,7 @@ export const Chat: React.FC<ChatProps> = ({
   };
 
   return (
-    <div className="chat-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+    <div className="chat-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div className="chat-messages" ref={messagesContainerRef}>
         {messages.map((msg) => {
           if (msg.type === 'system') {
