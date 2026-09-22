@@ -111,7 +111,7 @@ export const RoughBanner: React.FC<RoughBannerProps> = ({
           width: '100%',
           height: '100%',
           pointerEvents: 'none',
-          overflow: 'visible'
+          overflow: 'hidden'
         }}
       />
       <div
@@ -122,7 +122,11 @@ export const RoughBanner: React.FC<RoughBannerProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          whiteSpace: 'nowrap'
+          textAlign: 'center',
+          wordBreak: 'break-word',
+          overflowWrap: 'anywhere',
+          maxWidth: '100%',
+          boxSizing: 'border-box'
         }}
       >
         {children}

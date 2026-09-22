@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Player } from '../../../shared/types.js';
 import { RoughPill } from './rough/RoughPill.js';
+import { RoughCircle } from './rough/RoughCircle.js';
 
 interface PlayerListProps {
   players: Player[];
@@ -41,7 +42,17 @@ export const PlayerList: React.FC<PlayerListProps> = ({
               fill={player.isHost ? '#ffe4d0' : isSelf ? '#dbeafe' : '#f1f5f9'}
             >
               <div className="player-chip-inner" title={isSelf ? 'شما' : player.name}>
-                <span className="chip-rank">{index + 1}</span>
+                <RoughCircle
+                  stroke={player.isHost ? '#ea580c' : isSelf ? '#2563eb' : '#cbd5e1'}
+                  strokeWidth={1}
+                  fill={player.isHost ? '#ffe4d0' : isSelf ? '#dbeafe' : '#f1f5f9'}
+                  style={{ width: '20px', height: '20px', flexShrink: 0 }}
+                  innerStyle={{ padding: 0 }}
+                >
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, lineHeight: 1 }}>
+                    {index + 1}
+                  </span>
+                </RoughCircle>
                 {isDrawing && <span className="chip-badge" title="در حال نقاشی">✏️</span>}
                 {isGuessed && <span className="chip-badge" title="حدس درست">✅</span>}
                 <span className={`chip-name ${player.isHost ? 'host-name' : isSelf ? 'self-name' : ''}`}>{player.name}</span>

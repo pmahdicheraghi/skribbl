@@ -12,6 +12,7 @@ export interface RoughCircleProps {
   bowing?: number;
   style?: React.CSSProperties;
   className?: string;
+  innerStyle?: React.CSSProperties;
   onClick?: () => void;
 }
 
@@ -25,6 +26,7 @@ export const RoughCircle: React.FC<RoughCircleProps> = ({
   bowing = 1,
   style,
   className,
+  innerStyle,
   onClick
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -110,7 +112,8 @@ export const RoughCircle: React.FC<RoughCircleProps> = ({
           padding: '6px 10px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          ...innerStyle
         }}
       >
         {children}

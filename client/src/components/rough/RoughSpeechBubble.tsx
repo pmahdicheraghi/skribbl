@@ -58,7 +58,7 @@ export const RoughSpeechBubble: React.FC<RoughSpeechBubbleProps> = ({
     }
 
     const rc = rough.svg(svg);
-    const pad = Math.max(strokeWidth, 2);
+    const pad = Math.max(strokeWidth + 2, 4);
     const w = size.width;
     const h = size.height;
     const tailH = tailPosition === 'none' ? 0 : 8;
@@ -131,6 +131,8 @@ export const RoughSpeechBubble: React.FC<RoughSpeechBubbleProps> = ({
         position: 'relative',
         display: 'block',
         width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
         boxSizing: 'border-box',
         ...style
       }}
@@ -144,7 +146,7 @@ export const RoughSpeechBubble: React.FC<RoughSpeechBubbleProps> = ({
           width: '100%',
           height: '100%',
           pointerEvents: 'none',
-          overflow: 'visible'
+          overflow: 'hidden'
         }}
       />
       <div
@@ -152,7 +154,8 @@ export const RoughSpeechBubble: React.FC<RoughSpeechBubbleProps> = ({
           position: 'relative',
           zIndex: 1,
           padding: `8px 12px ${paddingBottom} 12px`,
-          wordBreak: 'break-word'
+          wordBreak: 'break-word',
+          overflowWrap: 'anywhere'
         }}
       >
         {children}

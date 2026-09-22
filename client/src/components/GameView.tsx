@@ -77,15 +77,21 @@ export const GameView: React.FC<GameViewProps> = ({
         </div>
 
         <div className="header-center">
-          <RoughPill stroke="#2c3e50" strokeWidth={1.5} fill="#ffffff">
-            <span style={{ fontSize: '1rem', fontWeight: 800, color: '#2c3e50', padding: '0 8px', whiteSpace: 'nowrap' }}>
+          <RoughBanner
+            stroke="#2c3e50"
+            strokeWidth={1.6}
+            fill="#ffffff"
+            notchSize={8}
+            style={{ maxWidth: '100%', minWidth: 0, flexShrink: 1 }}
+          >
+            <span style={{ fontSize: '1rem', fontWeight: 800, color: '#2c3e50', padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {getWordDisplayText()}
             </span>
-          </RoughPill>
+          </RoughBanner>
 
           <RoughPill stroke="#d35400" strokeWidth={1.4} fill="#fdf2e9">
             <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#d35400', padding: '0 6px', whiteSpace: 'nowrap' }}>
-              ⏱️ {roomState.secondsLeft} ثانیه
+              {roomState.secondsLeft} ثانیه
             </span>
           </RoughPill>
         </div>
@@ -99,20 +105,13 @@ export const GameView: React.FC<GameViewProps> = ({
         </div>
       </header>
 
+      {/* Hand-drawn divider below header */}
+      <RoughDivider stroke="#cfc9b4" strokeWidth={1.8} style={{ margin: 0, flexShrink: 0 }} />
+
       {/* Main Game Layout (Flexbox) */}
       <main className={`game-layout ${isDrawer ? 'role-drawer' : 'role-guesser'}`}>
         {/* Canvas Section */}
         <section className="canvas-section">
-          {/* Mobile Players Bar (Visible only on mobile screen) */}
-          <div className="mobile-players-bar">
-            <PlayerList
-              players={roomState.players}
-              currentDrawerId={roomState.currentDrawerId}
-              currentUserId={currentSocketId}
-            />
-            <RoughDivider stroke="#e2e8f0" strokeWidth={1.2} style={{ margin: '4px 0' }} />
-          </div>
-
           <div className="canvas-card">
             <Canvas
               isDrawer={isDrawer && roomState.state === 'DRAWING'}
@@ -278,8 +277,7 @@ export const GameView: React.FC<GameViewProps> = ({
         <aside className="game-sidebar">
           <WiredCard elevation={2} className="game-sidebar-wired">
             <div className="game-sidebar-inner">
-              {/* Desktop Players Bar (hidden on mobile) */}
-              <div className="sidebar-players-desktop">
+              <div className="sidebar-players">
                 <PlayerList
                   players={roomState.players}
                   currentDrawerId={roomState.currentDrawerId}

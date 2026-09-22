@@ -370,20 +370,23 @@ wired-button.tool-wired-btn.danger:hover {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
   overflow: hidden;
 }
 
 wired-card.game-sidebar-wired {
   display: grid !important;
-  grid-template-rows: 1fr;
-  grid-template-columns: 1fr;
+  grid-template-rows: minmax(0, 1fr) !important;
+  grid-template-columns: minmax(0, 1fr) !important;
   height: 100%;
   max-height: 100%;
   width: 100%;
   min-height: 0;
+  min-width: 0;
   background: #ffffff;
   padding: 10px 12px 12px 12px !important;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .game-sidebar-inner {
@@ -392,21 +395,24 @@ wired-card.game-sidebar-wired {
   height: 100%;
   max-height: 100%;
   min-height: 0;
+  min-width: 0;
   width: 100%;
   overflow: hidden;
   box-sizing: border-box;
 }
 
-.sidebar-players-desktop {
+.sidebar-players {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  min-width: 0;
 }
 
 .sidebar-chat-wrapper {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
-  height: 100%;
+  min-width: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -497,11 +503,6 @@ wired-card.game-sidebar-wired {
   border-radius: 6px;
 }
 
-/* Mobile Specific Elements */
-.mobile-players-bar {
-  display: none;
-}
-
 @media (max-width: 768px) {
   .header-bar {
     padding: 3px 10px;
@@ -525,12 +526,6 @@ wired-card.game-sidebar-wired {
     gap: 6px;
     padding: 4px 6px 6px;
     overflow: hidden;
-  }
-
-  .mobile-players-bar {
-    display: block;
-    flex-shrink: 0;
-    margin-bottom: 2px;
   }
 
   .player-chips-row {
@@ -614,6 +609,7 @@ wired-card.game-sidebar-wired {
     width: 100%;
     flex: 1 1 auto;
     min-height: 0;
+    min-width: 0;
     height: auto;
     max-height: none;
     display: flex;
@@ -625,14 +621,12 @@ wired-card.game-sidebar-wired {
     height: 100%;
     padding: 6px 8px !important;
     display: grid !important;
-    grid-template-rows: 1fr;
-    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     flex: 1;
     min-height: 0;
-  }
-
-  .sidebar-players-desktop {
-    display: none;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .chat-messages {
@@ -654,14 +648,16 @@ wired-card.game-sidebar-wired {
 .chat-wrapper {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
+  min-width: 0;
   height: 100%;
+  width: 100%;
   overflow: hidden;
 }
 
 .chat-messages {
-  flex: 1;
+  flex: 1 1 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 8px 6px;
@@ -670,6 +666,10 @@ wired-card.game-sidebar-wired {
   gap: 6px;
   user-select: text;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overscroll-behavior: contain;
 }
 
 .chat-messages::-webkit-scrollbar {
@@ -754,6 +754,9 @@ wired-card.game-sidebar-wired {
   padding: 8px 4px 4px 4px;
   align-items: center;
   flex-shrink: 0;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Players List */
