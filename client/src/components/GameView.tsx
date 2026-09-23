@@ -287,14 +287,12 @@ export const GameView: React.FC<GameViewProps> = ({
               </div>
 
               {/* Chat Feed */}
-              <div className="sidebar-chat-wrapper">
-                <Chat
-                  messages={messages}
-                  onSendMessage={onSendMessage}
-                  isDrawer={isDrawer && roomState.state === 'DRAWING'}
-                  hasGuessedCorrectly={hasGuessedCorrectly}
-                />
-              </div>
+              <Chat
+                messages={messages}
+                onSendMessage={onSendMessage}
+                isDrawer={isDrawer && roomState.state === 'DRAWING'}
+                hasGuessedCorrectly={hasGuessedCorrectly}
+              />
             </div>
           </WiredCard>
         </aside>

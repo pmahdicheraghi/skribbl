@@ -64,11 +64,9 @@ export const Chat: React.FC<ChatProps> = ({
                 strokeWidth={1.2}
                 fill="#f1f5f9"
                 notchSize={8}
-                style={{ width: '100%', maxWidth: '100%', margin: '3px 0', boxSizing: 'border-box' }}
+                style={{ width: '100%', margin: '3px 0' }}
               >
-                <div style={{ fontSize: '0.88rem', color: '#475569', textAlign: 'center', fontWeight: 600, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                  📢 {msg.text}
-                </div>
+                <div className="chat-msg-system">📢 {msg.text}</div>
               </RoughBanner>
             );
           }
@@ -80,11 +78,9 @@ export const Chat: React.FC<ChatProps> = ({
                 stroke="#10b981"
                 strokeWidth={1.8}
                 fill="#ecfdf5"
-                style={{ width: '100%', maxWidth: '100%', margin: '3px 0', boxSizing: 'border-box' }}
+                style={{ width: '100%', margin: '3px 0' }}
               >
-                <div style={{ fontSize: '0.95rem', color: '#065f46', fontWeight: 700, textAlign: 'center', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                  🎉 {msg.text}
-                </div>
+                <div className="chat-msg-correct">🎉 {msg.text}</div>
               </RoughSpeechBubble>
             );
           }
@@ -96,37 +92,24 @@ export const Chat: React.FC<ChatProps> = ({
                 stroke="#f59e0b"
                 strokeWidth={1.8}
                 fill="#fefce8"
-                style={{ width: '100%', maxWidth: '100%', margin: '3px 0', boxSizing: 'border-box' }}
+                style={{ width: '100%', margin: '3px 0' }}
               >
-                <div style={{ fontSize: '0.95rem', color: '#854d0e', fontWeight: 700, textAlign: 'center', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                  💡 {msg.text}
-                </div>
+                <div className="chat-msg-close">💡 {msg.text}</div>
               </RoughSpeechBubble>
             );
           }
           return (
-            <div
-              key={msg.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'flex-start',
-                margin: '3px 0',
-                width: '100%',
-                maxWidth: '100%',
-                minWidth: 0,
-                boxSizing: 'border-box'
-              }}
-            >
+            <div key={msg.id} className="chat-bubble-row">
               <RoughSpeechBubble
                 tailPosition="bottom-right"
                 stroke="#374151"
                 strokeWidth={1.3}
                 fill="#ffffff"
-                style={{ maxWidth: '92%', minWidth: 0, boxSizing: 'border-box' }}
+                style={{ maxWidth: '92%' }}
               >
-                <div style={{ fontSize: '0.95rem', lineHeight: 1.4, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                  <strong style={{ color: '#d97706', marginLeft: '4px', fontWeight: 700 }}>{msg.senderName}:</strong>
-                  <span style={{ color: '#1e293b' }}>{msg.text}</span>
+                <div className="chat-msg-user">
+                  <strong className="chat-sender">{msg.senderName}:</strong>
+                  <span>{msg.text}</span>
                 </div>
               </RoughSpeechBubble>
             </div>
@@ -134,25 +117,23 @@ export const Chat: React.FC<ChatProps> = ({
         })}
       </div>
 
-      <form onSubmit={handleSubmit} className="chat-input-row" style={{ alignItems: 'center' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <WiredInput
-            value={inputText}
-            onChange={(e: any) => {
-              const val = e.target?.value ?? e.detail?.sourceEvent?.target?.value ?? '';
-              setInputText(val);
-            }}
-            placeholder={getPlaceholder()}
-            disabled={isDrawer}
-            onKeyDown={(e: any) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleSubmit();
-              }
-            }}
-            style={{ width: '100%', direction: 'rtl', display: 'block' }}
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="chat-input-row">
+        <WiredInput
+          value={inputText}
+          onChange={(e: any) => {
+            const val = e.target?.value ?? e.detail?.sourceEvent?.target?.value ?? '';
+            setInputText(val);
+          }}
+          placeholder={getPlaceholder()}
+          disabled={isDrawer}
+          onKeyDown={(e: any) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
+          style={{ flex: 1, minWidth: 0, direction: 'rtl' }}
+        />
         <WiredButton
           elevation={2}
           onClick={() => handleSubmit()}
