@@ -299,3 +299,199 @@ test('End-to-End WebSocket host reconnect and game restart', async () => {
   await new Promise<void>((resolve) => server.close(() => resolve()));
 });
 
+test('Chat message order: user message before close hint, and correct guess before round ended announcement', async () => {
+  const app = express();
+  const server = http.createServer(app);
+  const io = new Server<ClientToServerEvents, ServerToClientEvents>(server);
+
+  const rooms = new Map<string, Room>();
+  const socketToRoom = new Map<string, string>();
+
+  io.on('connection', (socket) => {
+    socket.on('create_room', ({ playerName, settings }, callback) => {
+      const roomId = 'ORDER-TEST-ROOM';
+      const room = new Room(roomId, playerName, socket.id, settings);
+      rooms.set(roomId, room);
+      socketToRoom.set(socket.id, roomId);
+      socket.join(roomId);
+
+      room.setCallbacks({
+        onStateChange: () => {
+          for (const p of room.players) {
+            io.to(p.id).emit('room_state', room.getPublicState(p.id));
+          }
+          if (room.state === 'ROUND_ENDED' || room.state === 'GAME_OVER') {
+            const msg: ChatMessage = {
+              id: `${Date.now()}-reveal`,
+              senderName: 'سیستم',
+              text: `پایان دور! کلمه درست «${room.secretWord}» بود.`,
+              type: 'system'
+            };
+            io.to(room.roomId).emit('chat_message', msg);
+          }
+        }
+      });
+
+      callback({ success: true, roomId });
+    });
+
+    socket.on('join_room', ({ roomId, playerName }, callback) => {
+      const room = rooms.get(roomId);
+      if (!room) return callback({ success: false, error: 'Not found' });
+      room.addPlayer(playerName, socket.id);
+      socketToRoom.set(socket.id, roomId);
+      socket.join(roomId);
+      callback({ success: true });
+    });
+
+    socket.on('start_game', () => {
+      const roomId = socketToRoom.get(socket.id);
+      if (!roomId) return;
+      const room = rooms.get(roomId);
+      if (!room) return;
+      room.startGame(socket.id);
+    });
+
+    socket.on('select_word', (word) => {
+      const roomId = socketToRoom.get(socket.id);
+      if (!roomId) return;
+      const room = rooms.get(roomId);
+      if (!room) return;
+      room.selectWord(socket.id, word);
+    });
+
+    socket.on('send_guess', (text) => {
+      const roomId = socketToRoom.get(socket.id);
+      if (!roomId) return;
+      const room = rooms.get(roomId);
+      if (!room) return;
+      const player = room.players.find((p) => p.id === socket.id);
+      if (!player) return;
+
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      if (room.state === 'DRAWING') {
+        const result = room.processGuess(socket.id, trimmed);
+
+        if (result.isCorrect) {
+          const correctMsg: ChatMessage = {
+            id: `${Date.now()}-correct-${player.id}`,
+            senderName: 'سیستم',
+            text: `🎉 ${player.name} کلمه را درست حدس زد! (+${result.scoreEarned} امتیاز)`,
+            type: 'correct'
+          };
+          io.to(roomId).emit('chat_message', correctMsg);
+
+          if (result.allGuessed) {
+            room.endRound();
+          }
+          return;
+        }
+
+        const chatMsg: ChatMessage = {
+          id: `${Date.now()}-chat`,
+          senderName: player.name,
+          text: trimmed,
+          type: 'chat'
+        };
+        io.to(roomId).emit('chat_message', chatMsg);
+
+        if (result.isClose) {
+          const closeMsg: ChatMessage = {
+            id: `${Date.now()}-close`,
+            senderName: 'سیستم',
+            text: `«${trimmed}» خیلی به کلمه نزدیک است!`,
+            type: 'close'
+          };
+          socket.emit('chat_message', closeMsg);
+        }
+      }
+    });
+  });
+
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  const address = server.address() as { port: number };
+  const url = `http://localhost:${address.port}`;
+
+  const client1 = ClientIO(url, { transports: ['websocket'] });
+  const client2 = ClientIO(url, { transports: ['websocket'] });
+
+  await new Promise<void>((resolve) => {
+    let connected = 0;
+    const check = () => {
+      connected++;
+      if (connected === 2) resolve();
+    };
+    client1.on('connect', check);
+    client2.on('connect', check);
+  });
+
+  await new Promise<void>((resolve) => {
+    client1.emit('create_room', { playerName: 'Ali' }, () => resolve());
+  });
+  await new Promise<void>((resolve) => {
+    client2.emit('join_room', { roomId: 'ORDER-TEST-ROOM', playerName: 'Sara' }, () => resolve());
+  });
+
+  client1.emit('start_game');
+  client1.emit('select_word', 'هواپیما');
+
+  // Wait until client2 is in DRAWING state
+  await new Promise<void>((resolve) => {
+    client2.on('room_state', (state) => {
+      if (state.state === 'DRAWING') resolve();
+    });
+  });
+
+  const receivedMessages: ChatMessage[] = [];
+  client2.on('chat_message', (msg) => {
+    receivedMessages.push(msg);
+  });
+
+  // Step 1: Sara sends a close guess ("هواپیماا")
+  client2.emit('send_guess', 'هواپیماا');
+
+  // Wait for both user message and close hint to be received
+  await new Promise<void>((resolve) => {
+    const interval = setInterval(() => {
+      if (receivedMessages.length >= 2) {
+        clearInterval(interval);
+        resolve();
+      }
+    }, 10);
+  });
+
+  // Assert user chat message is sent BEFORE the close hint
+  assert.equal(receivedMessages[0].type, 'chat');
+  assert.equal(receivedMessages[0].text, 'هواپیماا');
+  assert.equal(receivedMessages[1].type, 'close');
+  assert.equal(receivedMessages[1].text, '«هواپیماا» خیلی به کلمه نزدیک است!');
+
+  // Step 2: Sara sends the correct guess ("هواپیما")
+  client2.emit('send_guess', 'هواپیما');
+
+  // Wait for correct guess message and round ended announcement
+  await new Promise<void>((resolve) => {
+    const interval = setInterval(() => {
+      if (receivedMessages.length >= 4) {
+        clearInterval(interval);
+        resolve();
+      }
+    }, 10);
+  });
+
+  // Assert correct guess message is sent BEFORE the round ended announcement
+  assert.equal(receivedMessages[2].type, 'correct');
+  assert.ok(receivedMessages[2].text.includes('کلمه را درست حدس زد'));
+  assert.equal(receivedMessages[3].type, 'system');
+  assert.ok(receivedMessages[3].text.includes('پایان دور! کلمه درست'));
+
+  client1.disconnect();
+  client2.disconnect();
+  for (const r of rooms.values()) {
+    r.clearTimer();
+  }
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+});
+

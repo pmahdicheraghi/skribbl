@@ -66,7 +66,7 @@ function attachRoomCallbacks(room: Room) {
       // If round just ended or game over, announce revealed word
       if (room.state === 'ROUND_ENDED' || room.state === 'GAME_OVER') {
         const msg: ChatMessage = {
-          id: String(Date.now()),
+          id: `${Date.now()}-reveal`,
           senderName: 'سیستم',
           text: `پایان دور! کلمه درست «${room.secretWord}» بود.`,
           type: 'system'
@@ -295,52 +295,68 @@ io.on('connection', (socket) => {
 
       if (result.isCorrect) {
         const correctMsg: ChatMessage = {
-          id: String(Date.now()),
+          id: `${Date.now()}-correct-${player.id}`,
           senderName: 'سیستم',
           text: `🎉 ${player.name} کلمه را درست حدس زد! (+${result.scoreEarned} امتیاز)`,
           type: 'correct'
         };
         io.to(roomId).emit('chat_message', correctMsg);
-        broadcastRoomState(room);
+
+        if (result.allGuessed) {
+          room.endRound();
+        } else {
+          broadcastRoomState(room);
+        }
         return;
       }
 
+      // If player has already guessed correctly, filter out message from guessers who haven't guessed
+      if (player.hasGuessedCorrectly) {
+        const chatMsg: ChatMessage = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          senderName: player.name,
+          text: trimmed,
+          type: 'chat'
+        };
+        // Send only to drawer and players who have already guessed correctly
+        for (const p of room.players) {
+          if (p.id === room.currentDrawerId || p.hasGuessedCorrectly) {
+            io.to(p.id).emit('chat_message', chatMsg);
+          }
+        }
+        return;
+      }
+
+      // Normal chat message from active guesser - broadcast message to room first
+      const chatMsg: ChatMessage = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        senderName: player.name,
+        text: trimmed,
+        type: 'chat'
+      };
+      io.to(roomId).emit('chat_message', chatMsg);
+
+      // If close guess, send private hint to guesser AFTER their message has been sent
       if (result.isClose) {
-        // Send close hint to this player privately
         const closeMsg: ChatMessage = {
-          id: String(Date.now()),
+          id: `${Date.now()}-close-${Math.random().toString(36).slice(2, 7)}`,
           senderName: 'سیستم',
           text: `«${trimmed}» خیلی به کلمه نزدیک است!`,
           type: 'close'
         };
         socket.emit('chat_message', closeMsg);
       }
+      return;
     }
 
-    // Normal chat message
-    // If player has already guessed correctly, filter out message from guessers who haven't guessed
-    if (player.hasGuessedCorrectly && room.state === 'DRAWING') {
-      const chatMsg: ChatMessage = {
-        id: String(Date.now()) + Math.random(),
-        senderName: player.name,
-        text: trimmed,
-        type: 'chat'
-      };
-      // Send only to drawer and players who have already guessed correctly
-      for (const p of room.players) {
-        if (p.id === room.currentDrawerId || p.hasGuessedCorrectly) {
-          io.to(p.id).emit('chat_message', chatMsg);
-        }
-      }
-    } else {
-      const chatMsg: ChatMessage = {
-        id: String(Date.now()) + Math.random(),
-        senderName: player.name,
-        text: trimmed,
-        type: 'chat'
-      };
-      io.to(roomId).emit('chat_message', chatMsg);
-    }
+    // Normal chat message when outside DRAWING state
+    const chatMsg: ChatMessage = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      senderName: player.name,
+      text: trimmed,
+      type: 'chat'
+    };
+    io.to(roomId).emit('chat_message', chatMsg);
   });
 
   socket.on('disconnect', () => {

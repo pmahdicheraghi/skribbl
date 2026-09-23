@@ -277,7 +277,7 @@ export class Room {
     this.canvasHistory = [];
   }
 
-  public processGuess(socketId: string, text: string): GuessResult {
+  public processGuess(socketId: string, text: string, autoEndRound: boolean = false): GuessResult {
     if (this.state !== 'DRAWING' || !this.secretWord) {
       return { isCorrect: false };
     }
@@ -306,7 +306,9 @@ export class Room {
 
       if (allGuessed) {
         this.clearTimer();
-        this.endRound();
+        if (autoEndRound) {
+          this.endRound();
+        }
       }
 
       return { isCorrect: true, scoreEarned, allGuessed };
