@@ -33,8 +33,9 @@ export function useSocket() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // In dev, Vite proxies /socket.io to server (or connects to current host)
-    const socket: TypedSocket = io('/', {
+    // In dev mode (Vite on port 5173), connect directly to the server on port 3001
+    const socketUrl = import.meta.env.DEV ? 'http://localhost:3001' : '/';
+    const socket: TypedSocket = io(socketUrl, {
       transports: ['websocket', 'polling']
     });
     socketRef.current = socket;
