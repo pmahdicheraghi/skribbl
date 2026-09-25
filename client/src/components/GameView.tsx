@@ -38,6 +38,7 @@ export const GameView: React.FC<GameViewProps> = ({
   onSendMessage
 }) => {
   const [copied, setCopied] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   const currentSocketId = socket?.id;
   const isDrawer = roomState.currentDrawerId === currentSocketId;
@@ -115,6 +116,7 @@ export const GameView: React.FC<GameViewProps> = ({
           <div className="canvas-card">
             <Canvas
               isDrawer={isDrawer && roomState.state === 'DRAWING'}
+              gameState={roomState.state}
               onStroke={onStroke}
               onClear={onClear}
               socket={socket}
@@ -273,8 +275,11 @@ export const GameView: React.FC<GameViewProps> = ({
           </div>
         </section>
 
-        {/* Sidebar (Combined Players + Chat on Desktop; Chat under Canvas on Mobile) */}
-        <aside className="game-sidebar">
+        <aside
+          className={`game-sidebar ${isInputFocused ? 'input-focused' : ''}`}
+          onFocus={() => setIsInputFocused(true)}
+          onBlur={() => setIsInputFocused(false)}
+        >
           <WiredCard elevation={2} className="game-sidebar-wired">
             <div className="game-sidebar-inner">
               <div className="sidebar-players">

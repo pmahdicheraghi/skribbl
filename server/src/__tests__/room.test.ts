@@ -159,3 +159,65 @@ test('Room restartToLobby resets scores and round while keeping players', () => 
   assert.equal(room.players.length, 2);
 });
 
+test('Room pure proportional scoring: guesser and drawer get equal score in 2-player game', () => {
+  const room = new Room('R_SCORE2', 'Ali', 'socket_1', undefined, { roundDurationSec: 100 });
+  room.addPlayer('Sara', 'socket_2');
+  room.startGame('socket_1');
+  room.selectWord('socket_1', 'درخت');
+  
+  // 60 seconds left out of 100 -> scoreEarned = Math.round(60/100 * 500) = 300
+  room.secondsLeft = 60;
+  const result = room.processGuess('socket_2', 'درخت');
+
+  assert.equal(result.isCorrect, true);
+  assert.equal(result.scoreEarned, 300);
+  assert.equal(result.drawerScoreEarned, 300);
+
+  const drawer = room.players.find(p => p.id === 'socket_1');
+  const guesser = room.players.find(p => p.id === 'socket_2');
+  assert.equal(guesser!.score, 300);
+  assert.equal(drawer!.score, 300);
+});
+
+test('Room pure proportional scoring: drawer gets exact average in 4-player game (3 guessers)', () => {
+  const room = new Room('R_SCORE4', 'Drawer', 'sock_d', undefined, { roundDurationSec: 100 });
+  room.addPlayer('Guesser1', 'sock_g1');
+  room.addPlayer('Guesser2', 'sock_g2');
+  room.addPlayer('Guesser3', 'sock_g3');
+  room.startGame('sock_d');
+  room.selectWord('sock_d', 'پرتقال');
+
+  // G1 guesses at 80s left -> 80/100 * 500 = 400 pts -> Drawer gets 400 / 3 = 133 pts
+  room.secondsLeft = 80;
+  const res1 = room.processGuess('sock_g1', 'پرتقال');
+  assert.equal(res1.scoreEarned, 400);
+  assert.equal(res1.drawerScoreEarned, 133);
+
+  // G2 guesses at 50s left -> 50/100 * 500 = 250 pts -> Drawer gets 250 / 3 = 83 pts
+  room.secondsLeft = 50;
+  const res2 = room.processGuess('sock_g2', 'پرتقال');
+  assert.equal(res2.scoreEarned, 250);
+  assert.equal(res2.drawerScoreEarned, 83);
+
+  const drawer = room.players.find(p => p.id === 'sock_d');
+  // Total drawer score = 133 + 83 = 216
+  assert.equal(drawer!.score, 216);
+});
+
+test('Room resets canvasHistory on selectWord and turn advance', () => {
+  const room = new Room('R_CANVAS', 'Ali', 'sock_1');
+  room.addPlayer('Sara', 'sock_2');
+  room.startGame('sock_1');
+
+  // Simulate strokes added
+  room.selectWord('sock_1', 'کتاب');
+  room.addStroke({ points: [{ x: 0.1, y: 0.1 }], color: '#000', size: 3 });
+  assert.equal(room.canvasHistory.length, 1);
+
+  // Advance turn to next player
+  room.endRound();
+  room.advanceTurn();
+  assert.equal(room.state, 'SELECTING_WORD');
+  assert.equal(room.canvasHistory.length, 0);
+});
+

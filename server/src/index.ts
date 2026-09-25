@@ -58,6 +58,11 @@ function attachRoomCallbacks(room: Room) {
     onStateChange: () => {
       broadcastRoomState(room);
 
+      // Clear canvas on word selection, round start, or lobby reset
+      if (room.state === 'SELECTING_WORD' || room.state === 'DRAWING' || room.state === 'LOBBY') {
+        io.to(room.roomId).emit('clear_canvas');
+      }
+
       // If in SELECTING_WORD state, send word options to current drawer
       if (room.state === 'SELECTING_WORD' && room.currentDrawerId) {
         io.to(room.currentDrawerId).emit('word_options', room.wordOptions);

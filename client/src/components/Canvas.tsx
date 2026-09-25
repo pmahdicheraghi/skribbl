@@ -18,6 +18,7 @@ const PALETTE_COLORS = [
 
 interface CanvasProps {
   isDrawer: boolean;
+  gameState?: string;
   onStroke: (stroke: DrawStroke) => void;
   onClear: () => void;
   socket: Socket | null;
@@ -50,6 +51,7 @@ const TrashIcon: React.FC<{ size?: number; color?: string }> = ({ size = 20, col
 
 export const Canvas: React.FC<CanvasProps> = ({
   isDrawer,
+  gameState,
   onStroke,
   onClear,
   socket
@@ -188,6 +190,20 @@ export const Canvas: React.FC<CanvasProps> = ({
       socket.off('canvas_history', handleCanvasHistory);
     };
   }, [socket, drawStrokeOnCanvas]);
+
+  // Defense-in-depth: Automatically wipe canvas when game enters word selection or lobby
+  useEffect(() => {
+    if (gameState === 'SELECTING_WORD' || gameState === 'LOBBY') {
+      historyRef.current = [];
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+    }
+  }, [gameState]);
 
   const getCoordinates = (e: React.PointerEvent<HTMLCanvasElement>): DrawPoint | null => {
     const canvas = canvasRef.current;

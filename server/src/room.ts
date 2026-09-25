@@ -12,6 +12,7 @@ export interface GuessResult {
   isCorrect: boolean;
   isClose?: boolean;
   scoreEarned?: number;
+  drawerScoreEarned?: number;
   allGuessed?: boolean;
 }
 
@@ -202,6 +203,7 @@ export class Room {
     if (this.currentDrawerId !== socketId) return false;
 
     this.clearTimer();
+    this.canvasHistory = [];
     this.secretWord = word;
     this.state = 'DRAWING';
     this.secondsLeft = this.settings.roundDurationSec;
@@ -292,16 +294,18 @@ export class Room {
 
     if (normalizedGuess === normalizedSecret) {
       player.hasGuessedCorrectly = true;
-      const scoreEarned = Math.floor((this.secondsLeft / this.settings.roundDurationSec) * 500) + 50;
+      const scoreEarned = Math.round((this.secondsLeft / this.settings.roundDurationSec) * 500);
       player.score += scoreEarned;
 
+      const nonDrawers = this.players.filter(p => p.id !== this.currentDrawerId);
       const drawer = this.players.find(p => p.id === this.currentDrawerId);
+      let drawerScoreEarned = 0;
       if (drawer) {
-        drawer.score += 50;
+        drawerScoreEarned = Math.round(scoreEarned / Math.max(1, nonDrawers.length));
+        drawer.score += drawerScoreEarned;
       }
 
       // Check if all non-drawers guessed correctly
-      const nonDrawers = this.players.filter(p => p.id !== this.currentDrawerId);
       const allGuessed = nonDrawers.every(p => p.hasGuessedCorrectly);
 
       if (allGuessed) {
@@ -311,7 +315,7 @@ export class Room {
         }
       }
 
-      return { isCorrect: true, scoreEarned, allGuessed };
+      return { isCorrect: true, scoreEarned, drawerScoreEarned, allGuessed };
     }
 
     const distance = levenshteinDistance(normalizedGuess, normalizedSecret);
