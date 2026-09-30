@@ -56,11 +56,6 @@ export const GameView: React.FC<GameViewProps> = ({
         setIsKeyboardOpen(true);
       } else if (heightDiff < 80) {
         setIsKeyboardOpen(false);
-        // Explicitly blur any input element so DOM focus doesn't keep it trapped
-        const active = document.activeElement as HTMLElement | null;
-        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.closest('wired-input'))) {
-          active.blur();
-        }
       }
     };
 
