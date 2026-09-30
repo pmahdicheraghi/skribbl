@@ -221,3 +221,30 @@ test('Room resets canvasHistory on selectWord and turn advance', () => {
   assert.equal(room.canvasHistory.length, 0);
 });
 
+test('Room maintains canvas strokes during hint reveals and player events in DRAWING state', () => {
+  const room = new Room('R_PRESERVE', 'Ali', 'sock_1', undefined, { roundDurationSec: 80 });
+  room.addPlayer('Sara', 'sock_2');
+  room.startGame('sock_1');
+  room.selectWord('sock_1', 'فیل');
+
+  // Add stroke during drawing
+  room.addStroke({ points: [{ x: 0.2, y: 0.2 }, { x: 0.3, y: 0.3 }], color: '#ff0000', size: 5 });
+  assert.equal(room.canvasHistory.length, 1);
+
+  // Trigger hint reveals as timer counts down
+  room.secondsLeft = 30;
+  room.checkHintReveal();
+  assert.equal(room.canvasHistory.length, 1);
+
+  // Add another stroke
+  room.addStroke({ points: [{ x: 0.5, y: 0.5 }], color: '#000000', size: 3 });
+  assert.equal(room.canvasHistory.length, 2);
+
+  // Disconnect/reconnect guesser
+  room.markPlayerDisconnected('sock_2');
+  assert.equal(room.canvasHistory.length, 2);
+  room.reconnectPlayer('sock_2', 'sock_2_new');
+  assert.equal(room.canvasHistory.length, 2);
+});
+
+

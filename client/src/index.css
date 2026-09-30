@@ -626,27 +626,22 @@ wired-card.game-sidebar-wired {
     padding-top: 4px;
   }
 
-  /* Mobile: Collapse chat feed and player list when keyboard is open / input is focused so user can still see canvas */
-  .game-sidebar:focus-within .sidebar-players,
-  .game-sidebar:focus-within .chat-messages,
-  .game-sidebar.input-focused .sidebar-players,
-  .game-sidebar.input-focused .chat-messages {
+  /* Mobile: Collapse chat feed and player list when keyboard is open so user can still see canvas */
+  .game-sidebar.keyboard-open .sidebar-players,
+  .game-sidebar.keyboard-open .chat-messages {
     display: none !important;
   }
 
-  .game-sidebar:focus-within,
-  .game-sidebar.input-focused {
+  .game-sidebar.keyboard-open {
     flex: 0 0 auto !important;
     height: auto !important;
   }
 
-  .game-sidebar:focus-within wired-card.game-sidebar-wired,
-  .game-sidebar.input-focused wired-card.game-sidebar-wired {
+  .game-sidebar.keyboard-open wired-card.game-sidebar-wired {
     padding: 3px 6px !important;
   }
 
-  .game-sidebar:focus-within .chat-wrapper,
-  .game-sidebar.input-focused .chat-wrapper {
+  .game-sidebar.keyboard-open .chat-wrapper {
     flex: 0 0 auto !important;
   }
 }

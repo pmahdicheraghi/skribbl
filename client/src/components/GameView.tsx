@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { RoomPublicState, ChatMessage, DrawStroke } from '../../../shared/types.js';
 import type { Socket } from 'socket.io-client';
 import { WiredCard, WiredButton } from 'wired-elements-react';
@@ -38,7 +38,35 @@ export const GameView: React.FC<GameViewProps> = ({
   onSendMessage
 }) => {
   const [copied, setCopied] = useState(false);
-  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setIsKeyboardOpen(false);
+        return;
+      }
+
+      // Check if virtual keyboard is open based on viewport height shrinkage (>140px)
+      const heightDiff = window.innerHeight - vv.height;
+      if (heightDiff > 140) {
+        setIsKeyboardOpen(true);
+      } else if (heightDiff < 80) {
+        setIsKeyboardOpen(false);
+        // Explicitly blur any input element so DOM focus doesn't keep it trapped
+        const active = document.activeElement as HTMLElement | null;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.closest('wired-input'))) {
+          active.blur();
+        }
+      }
+    };
+
+    vv.addEventListener('resize', handleResize);
+    return () => vv.removeEventListener('resize', handleResize);
+  }, []);
 
   const currentSocketId = socket?.id;
   const isDrawer = roomState.currentDrawerId === currentSocketId;
@@ -276,9 +304,17 @@ export const GameView: React.FC<GameViewProps> = ({
         </section>
 
         <aside
-          className={`game-sidebar ${isInputFocused ? 'input-focused' : ''}`}
-          onFocus={() => setIsInputFocused(true)}
-          onBlur={() => setIsInputFocused(false)}
+          className={`game-sidebar ${isKeyboardOpen ? 'keyboard-open' : ''}`}
+          onFocus={() => {
+            if (window.innerWidth <= 768) {
+              setIsKeyboardOpen(true);
+            }
+          }}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setIsKeyboardOpen(false);
+            }
+          }}
         >
           <WiredCard elevation={2} className="game-sidebar-wired">
             <div className="game-sidebar-inner">

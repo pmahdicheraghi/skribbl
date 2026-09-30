@@ -44,6 +44,11 @@ export const Chat: React.FC<ChatProps> = ({
 
     onSendMessage(trimmed);
     setInputText('');
+
+    if (window.innerWidth <= 768) {
+      const activeEl = document.activeElement as HTMLElement | null;
+      activeEl?.blur();
+    }
   };
 
   const getPlaceholder = () => {

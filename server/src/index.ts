@@ -54,13 +54,22 @@ function broadcastRoomState(room: Room) {
 }
 
 function attachRoomCallbacks(room: Room) {
+  let previousState = room.state;
+
   room.setCallbacks({
     onStateChange: () => {
+      const currentState = room.state;
       broadcastRoomState(room);
 
-      // Clear canvas on word selection, round start, or lobby reset
-      if (room.state === 'SELECTING_WORD' || room.state === 'DRAWING' || room.state === 'LOBBY') {
-        io.to(room.roomId).emit('clear_canvas');
+      // Only clear canvas on state TRANSITIONS to SELECTING_WORD, LOBBY, or when entering DRAWING
+      if (previousState !== currentState) {
+        if (currentState === 'SELECTING_WORD' || currentState === 'LOBBY') {
+          io.to(room.roomId).emit('clear_canvas');
+        }
+        if (previousState === 'SELECTING_WORD' && currentState === 'DRAWING') {
+          io.to(room.roomId).emit('clear_canvas');
+        }
+        previousState = currentState;
       }
 
       // If in SELECTING_WORD state, send word options to current drawer
