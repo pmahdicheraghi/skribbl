@@ -54,7 +54,7 @@ test('getRandomPersianWords filters by difficulty', () => {
   const hardWords = getRandomPersianWords(5, [], 'hard');
   assert.equal(hardWords.length, 5);
 
-  assert.ok(PERSIAN_WORD_BANK.length >= 600, `Expected at least 600 words, got ${PERSIAN_WORD_BANK.length}`);
+  assert.ok(PERSIAN_WORD_BANK.length >= 1200, `Expected at least 1200 words, got ${PERSIAN_WORD_BANK.length}`);
   const uniqueWords = new Set(PERSIAN_WORD_BANK);
   assert.equal(uniqueWords.size, PERSIAN_WORD_BANK.length, `Duplicate words found in bank! Duplicate count: ${PERSIAN_WORD_BANK.length - uniqueWords.size}`);
 });
