@@ -65,9 +65,20 @@ test('Room masks word for guessers and reveals for drawer', () => {
 
   const drawerState = room.getPublicState('socket_1');
   assert.equal(drawerState.wordMask, 'سیب سرخ');
+  assert.equal(drawerState.wordLength, 6); // Space is NOT counted
 
   const guesserState = room.getPublicState('socket_2');
-  assert.equal(guesserState.wordMask, '_ _ _   _ _ _');
+  assert.equal(guesserState.wordMask, '_ _ _   _ _ _'); // Space is placed, not word mask
+  assert.equal(guesserState.wordLength, 6);
+
+  // Test word with ZWNJ / half-space in separate room
+  const roomZwnj = new Room('TEST_ZWNJ', 'Ali', 'socket_1');
+  roomZwnj.addPlayer('Sara', 'socket_2');
+  roomZwnj.startGame('socket_1');
+  roomZwnj.selectWord('socket_1', 'لوله\u200cکش');
+  const zwngState = roomZwnj.getPublicState('socket_2');
+  assert.equal(zwngState.wordLength, 6); // ZWNJ is not counted as a letter
+  assert.equal(zwngState.wordMask, '_ _ _ _   _ _'); // Mask has space, not '_' for ZWNJ
 });
 
 test('Room gradually reveals hint letters as secondsLeft decreases', () => {

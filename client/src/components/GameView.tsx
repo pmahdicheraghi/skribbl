@@ -89,7 +89,8 @@ export const GameView: React.FC<GameViewProps> = ({
     if (isDrawer) {
       return `کلمه: ${roomState.wordMask}`;
     }
-    return `${roomState.wordMask} (${roomState.wordLength})`;
+    const displayMask = roomState.wordMask.replace(/ {3}/g, '\u00A0\u00A0\u00A0');
+    return `${displayMask} (${roomState.wordLength})`;
   };
 
   return (
@@ -108,7 +109,7 @@ export const GameView: React.FC<GameViewProps> = ({
             notchSize={8}
             style={{ maxWidth: '100%', minWidth: 0, flexShrink: 1 }}
           >
-            <span style={{ fontSize: '1rem', fontWeight: 800, color: '#2c3e50', padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ fontSize: '1rem', fontWeight: 800, color: '#2c3e50', padding: '0 8px', whiteSpace: 'pre', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {getWordDisplayText()}
             </span>
           </RoughBanner>

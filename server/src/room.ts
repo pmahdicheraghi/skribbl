@@ -212,7 +212,8 @@ export class Room {
     // Determine non-space letter indices
     const letterIndices: number[] = [];
     for (let i = 0; i < word.length; i++) {
-      if (word[i] !== ' ') {
+      const ch = word[i];
+      if (ch !== ' ' && ch !== '\u200c' && !/\s/.test(ch)) {
         letterIndices.push(i);
       }
     }
@@ -408,7 +409,7 @@ export class Room {
       maxRounds: this.settings.maxRounds,
       secondsLeft: this.secondsLeft,
       wordMask,
-      wordLength: this.secretWord.replace(/\s+/g, '').length,
+      wordLength: this.secretWord.replace(/[\s\u200c]+/g, '').length,
       revealedWord: isOverOrEnded ? this.secretWord : undefined
     };
   }
@@ -417,8 +418,10 @@ export class Room {
     let result = '';
     for (let i = 0; i < word.length; i++) {
       const ch = word[i];
-      if (ch === ' ') {
-        result += '   ';
+      if (ch === ' ' || ch === '\u200c' || /\s/.test(ch)) {
+        if (!result.endsWith('   ')) {
+          result += '   ';
+        }
       } else {
         const displayChar = this.revealedHintIndices.has(i) ? ch : '_';
         const needsSpace = result.length > 0 && !result.endsWith('   ');
