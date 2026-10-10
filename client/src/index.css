@@ -504,6 +504,15 @@ wired-card.game-sidebar-wired {
 }
 
 @media (max-width: 768px) {
+  .game-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--locked-vh, 100svh);
+    max-height: var(--locked-vh, 100svh);
+  }
+
   .header-bar {
     padding: 3px 10px;
     height: 42px;
@@ -558,7 +567,7 @@ wired-card.game-sidebar-wired {
     width: 100%;
     max-width: 100%;
     height: auto;
-    max-height: 44vh;
+    max-height: calc(var(--locked-vh, 100svh) * 0.44);
     aspect-ratio: 4 / 3;
     padding: 3px !important;
     margin: 0 auto;
@@ -566,7 +575,7 @@ wired-card.game-sidebar-wired {
 
   /* When drawing on mobile, make canvas slightly more compact so tools and chat have plenty of space */
   .game-layout.role-drawer wired-card.canvas-wired-card {
-    max-height: 38vh;
+    max-height: calc(var(--locked-vh, 100svh) * 0.38);
   }
 
   /* Toolbar spans FULL WIDTH on mobile */
@@ -626,23 +635,10 @@ wired-card.game-sidebar-wired {
     padding-top: 4px;
   }
 
-  /* Mobile: Collapse chat feed and player list when keyboard is open so user can still see canvas */
-  .game-sidebar.keyboard-open .sidebar-players,
-  .game-sidebar.keyboard-open .chat-messages {
-    display: none !important;
-  }
-
-  .game-sidebar.keyboard-open {
-    flex: 0 0 auto !important;
-    height: auto !important;
-  }
-
-  .game-sidebar.keyboard-open wired-card.game-sidebar-wired {
-    padding: 3px 6px !important;
-  }
-
-  .game-sidebar.keyboard-open .chat-wrapper {
-    flex: 0 0 auto !important;
+  .chat-input-row.floating {
+    background-color: #f7f5ed;
+    padding: 6px 4px 4px 4px;
+    box-shadow: 0 -4px 12px rgba(43, 43, 43, 0.12);
   }
 }
 

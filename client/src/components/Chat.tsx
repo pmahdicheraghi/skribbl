@@ -3,6 +3,7 @@ import type { ChatMessage } from '../../../shared/types.js';
 import { WiredButton, WiredInput } from 'wired-elements-react';
 import { RoughSpeechBubble } from './rough/RoughSpeechBubble.js';
 import { RoughBanner } from './rough/RoughBanner.js';
+import { RoughDivider } from './rough/RoughDivider.js';
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -18,7 +19,11 @@ export const Chat: React.FC<ChatProps> = ({
   hasGuessedCorrectly
 }) => {
   const [inputText, setInputText] = useState('');
+  const [floatingStyle, setFloatingStyle] = useState<React.CSSProperties | null>(null);
+  const [placeholderHeight, setPlaceholderHeight] = useState<number>(0);
+  const chatWrapperRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const inputRowRef = useRef<HTMLFormElement | null>(null);
 
   const scrollToBottom = () => {
     const el = messagesContainerRef.current;
@@ -37,6 +42,80 @@ export const Chat: React.FC<ChatProps> = ({
     };
   }, [messages]);
 
+  useEffect(() => {
+    const vv = window.visualViewport;
+    let lockedHeight = window.innerHeight;
+    let lastWidth = window.innerWidth;
+
+    const updateLockedHeight = (height: number) => {
+      lockedHeight = height;
+      document.documentElement.style.setProperty('--locked-vh', `${height}px`);
+    };
+
+    updateLockedHeight(window.innerHeight);
+
+    const updateFloatingPosition = () => {
+      if (window.innerWidth > 768) {
+        setFloatingStyle(null);
+        setPlaceholderHeight(0);
+        return;
+      }
+
+      const currentHeight = vv ? vv.height : window.innerHeight;
+      const offsetTop = vv ? vv.offsetTop : 0;
+
+      // Update locked baseline height on orientation change or when viewport grows
+      if (window.innerWidth !== lastWidth || window.innerHeight > lockedHeight) {
+        lastWidth = window.innerWidth;
+        updateLockedHeight(window.innerHeight);
+      } else {
+        const active = document.activeElement;
+        const isInputActive =
+          active &&
+          (active.tagName === 'INPUT' ||
+            active.tagName === 'TEXTAREA' ||
+            active.closest('wired-input'));
+        if (!isInputActive && Math.abs(window.innerHeight - currentHeight) < 40) {
+          updateLockedHeight(window.innerHeight);
+        }
+      }
+
+      const keyboardHeight = lockedHeight - currentHeight;
+      if (keyboardHeight > 100 && chatWrapperRef.current && inputRowRef.current) {
+        if (window.scrollY !== 0) {
+          window.scrollTo(0, 0);
+        }
+
+        const wrapperRect = chatWrapperRef.current.getBoundingClientRect();
+        const inputRect = inputRowRef.current.getBoundingClientRect();
+        const rowHeight = Math.round(inputRect.height) || 52;
+        const topPos = Math.max(0, Math.round(offsetTop + currentHeight - rowHeight - 4));
+
+        setPlaceholderHeight(rowHeight);
+        setFloatingStyle({
+          position: 'fixed',
+          top: `${topPos}px`,
+          left: `${Math.round(wrapperRect.left)}px`,
+          width: `${Math.round(wrapperRect.width)}px`,
+          zIndex: 900
+        });
+      } else {
+        setFloatingStyle(null);
+        setPlaceholderHeight(0);
+      }
+    };
+
+    vv?.addEventListener('resize', updateFloatingPosition);
+    vv?.addEventListener('scroll', updateFloatingPosition);
+    window.addEventListener('resize', updateFloatingPosition);
+
+    return () => {
+      vv?.removeEventListener('resize', updateFloatingPosition);
+      vv?.removeEventListener('scroll', updateFloatingPosition);
+      window.removeEventListener('resize', updateFloatingPosition);
+    };
+  }, []);
+
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     const trimmed = inputText.trim();
@@ -44,11 +123,6 @@ export const Chat: React.FC<ChatProps> = ({
 
     onSendMessage(trimmed);
     setInputText('');
-
-    if (window.innerWidth <= 768) {
-      const activeEl = document.activeElement as HTMLElement | null;
-      activeEl?.blur();
-    }
   };
 
   const getPlaceholder = () => {
@@ -57,8 +131,14 @@ export const Chat: React.FC<ChatProps> = ({
     return 'حدس خود را اینجا بنویسید...';
   };
 
+  const isFloating = floatingStyle !== null;
+
   return (
-    <div className="chat-wrapper">
+    <div
+      className="chat-wrapper"
+      ref={chatWrapperRef}
+      style={placeholderHeight > 0 ? { paddingBottom: `${placeholderHeight}px` } : undefined}
+    >
       <div className="chat-messages" ref={messagesContainerRef}>
         {messages.map((msg) => {
           if (msg.type === 'system') {
@@ -122,7 +202,19 @@ export const Chat: React.FC<ChatProps> = ({
         })}
       </div>
 
-      <form onSubmit={handleSubmit} className="chat-input-row">
+      <form
+        ref={inputRowRef}
+        onSubmit={handleSubmit}
+        className={`chat-input-row ${isFloating ? 'floating' : ''}`}
+        style={floatingStyle ?? undefined}
+      >
+        {isFloating && (
+          <RoughDivider
+            stroke="#2b2b2b"
+            strokeWidth={1.6}
+            style={{ position: 'absolute', top: -3, left: 0, right: 0, margin: 0 }}
+          />
+        )}
         <WiredInput
           value={inputText}
           onChange={(e: any) => {
@@ -139,14 +231,20 @@ export const Chat: React.FC<ChatProps> = ({
           }}
           style={{ flex: 1, minWidth: 0, direction: 'rtl' }}
         />
-        <WiredButton
-          elevation={2}
-          onClick={() => handleSubmit()}
-          disabled={isDrawer || !inputText.trim()}
-          style={{ whiteSpace: 'nowrap', minWidth: '58px', flexShrink: 0 }}
+        <span
+          onPointerDown={(e) => e.preventDefault()}
+          onMouseDown={(e) => e.preventDefault()}
+          style={{ display: 'inline-flex', flexShrink: 0 }}
         >
-          ارسال
-        </WiredButton>
+          <WiredButton
+            elevation={2}
+            onClick={() => handleSubmit()}
+            disabled={isDrawer || !inputText.trim()}
+            style={{ whiteSpace: 'nowrap', minWidth: '58px', flexShrink: 0 }}
+          >
+            ارسال
+          </WiredButton>
+        </span>
       </form>
     </div>
   );
