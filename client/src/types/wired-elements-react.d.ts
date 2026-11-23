@@ -25,9 +25,12 @@ declare module 'wired-elements-react' {
     value?: string;
     disabled?: boolean;
     type?: string;
+    enterKeyHint?: string;
     onChange?: (e: any) => void;
     onInput?: (e: any) => void;
     onKeyDown?: (e: any) => void;
+    onFocus?: (e: any) => void;
+    onBlur?: (e: any) => void;
   }>;
 
   export const WiredTextarea: React.FC<CommonWiredProps & {

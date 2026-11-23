@@ -22,13 +22,16 @@ html, body {
 
 body {
   background-color: #f7f5ed;
-  background-image: 
+  background-image:
     radial-gradient(#e2decb 1px, transparent 1px);
   background-size: 24px 24px;
   color: #2b2b2b;
   min-height: 100%;
   direction: rtl;
   user-select: none;
+  /* Keep the locked screen from rubber-banding while the keyboard is open
+     (a bounced visual viewport shifts everything and breaks positioning). */
+  overscroll-behavior-y: none;
 }
 
 #root {
@@ -639,6 +642,7 @@ wired-card.game-sidebar-wired {
     background-color: #f7f5ed;
     padding: 6px 4px 4px 4px;
     box-shadow: 0 -4px 12px rgba(43, 43, 43, 0.12);
+    border-radius: 4px 4px 0 0;
   }
 }
 
