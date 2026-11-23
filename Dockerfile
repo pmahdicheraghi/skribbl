@@ -1,4 +1,4 @@
-FROM node:20-slim AS builder
+FROM mirror-docker.runflare.com/library/node:20-slim AS builder
 WORKDIR /app
 
 COPY package.json ./
@@ -13,7 +13,7 @@ COPY server/ ./server/
 
 RUN npm run build
 
-FROM node:20-slim
+FROM mirror-docker.runflare.com/library/node:20-slim
 WORKDIR /app
 ENV NODE_ENV=production
 
