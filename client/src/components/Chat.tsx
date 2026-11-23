@@ -3,6 +3,7 @@ import type { ChatMessage } from '../../../shared/types.js';
 import { WiredButton, WiredInput } from 'wired-elements-react';
 import { RoughSpeechBubble } from './rough/RoughSpeechBubble.js';
 import { RoughBanner } from './rough/RoughBanner.js';
+import { RoughBox } from './rough/RoughBox.js';
 import { RoughDivider } from './rough/RoughDivider.js';
 
 interface ChatProps {
@@ -95,6 +96,10 @@ export const Chat: React.FC<ChatProps> = ({
       setFloatingStyle({
         position: 'fixed',
         top: `${Math.max(0, Math.round(top))}px`,
+        // Pin the strip to the bottom of the layout viewport: the paper
+        // background runs from the input row down into the keyboard area,
+        // so the bar looks anchored instead of floating in mid-air.
+        bottom: 0,
         left: `${Math.round(rect.left)}px`,
         width: `${Math.round(rect.width)}px`,
         zIndex: 900
@@ -110,22 +115,42 @@ export const Chat: React.FC<ChatProps> = ({
       if (window.innerWidth > MOBILE_MAX) return;
       const vh = vv ? vv.height : window.innerHeight;
       const offsetTop = vv ? vv.offsetTop : 0;
+      const rowH = rowHeight();
 
+      // Target: right above the keyboard.
+      let target: number;
       if (lockedHeight - vh > 120) {
         // Keyboard already open (e.g. quick refocus): pin above it exactly.
-        keyboardOpen = true;
-        floatAt(offsetTop + vh - rowHeight() - 4);
-        return;
+        target = offsetTop + vh - rowH - 4;
+      } else {
+        // Pre-empt the keyboard: estimate how much of the viewport it will
+        // cover and park the input above that line right now. If the guess is
+        // slightly off, reposition() snaps the row to the real keyboard top
+        // as soon as the visual viewport resizes. Landscape keyboards are much
+        // taller relative to the (short) viewport, hence the higher ratio.
+        const portrait = window.innerWidth <= window.innerHeight;
+        const expectedKeyboard = vh * (portrait ? 0.42 : 0.72);
+        target = vh - expectedKeyboard - rowH - 4;
       }
 
-      // Pre-empt the keyboard: estimate how much of the viewport it will
-      // cover and park the input above that line right now. If the guess is
-      // slightly off, reposition() snaps the row to the real keyboard top
-      // as soon as the visual viewport resizes. Landscape keyboards are much
-      // taller relative to the (short) viewport, hence the higher ratio.
-      const portrait = window.innerWidth <= window.innerHeight;
-      const expectedKeyboard = vh * (portrait ? 0.42 : 0.72);
-      floatAt(vh - expectedKeyboard - rowHeight() - 4);
+      keyboardOpen = true;
+
+      // Instead of teleporting, place the row at its current (in-flow)
+      // position first, then glide it up to the target over the next frames
+      // (CSS transition on `top`). React flushes the focus-event update
+      // synchronously, so the start position is painted before we move.
+      const rowRect = inputRowRef.current?.getBoundingClientRect();
+      if (!rowRect) {
+        floatAt(target);
+        return;
+      }
+      const startTop = rowRect.top + window.scrollY;
+      floatAt(startTop);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          floatAt(target);
+        });
+      });
     };
 
     const handleBlur = () => {
@@ -216,6 +241,44 @@ export const Chat: React.FC<ChatProps> = ({
 
   const isFloating = floatingStyle !== null;
 
+  const inputControls = (
+    <>
+      <WiredInput
+        value={inputText}
+        onChange={(e: any) => {
+          const val = e.target?.value ?? e.detail?.sourceEvent?.target?.value ?? '';
+          setInputText(val);
+        }}
+        placeholder={getPlaceholder()}
+        disabled={isDrawer}
+        enterKeyHint="send"
+        onFocus={() => handleInputFocus.current()}
+        onBlur={() => handleInputBlur.current()}
+        onKeyDown={(e: any) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSubmit();
+          }
+        }}
+        style={{ flex: 1, minWidth: 0, direction: 'rtl' }}
+      />
+      <span
+        onPointerDown={(e) => e.preventDefault()}
+        onMouseDown={(e) => e.preventDefault()}
+        style={{ display: 'inline-flex', flexShrink: 0 }}
+      >
+        <WiredButton
+          elevation={2}
+          onClick={() => handleSubmit()}
+          disabled={isDrawer || !inputText.trim()}
+          style={{ whiteSpace: 'nowrap', minWidth: '58px', flexShrink: 0 }}
+        >
+          ارسال
+        </WiredButton>
+      </span>
+    </>
+  );
+
   return (
     <div
       className="chat-wrapper"
@@ -298,39 +361,24 @@ export const Chat: React.FC<ChatProps> = ({
             style={{ position: 'absolute', top: -3, left: 0, right: 0, margin: 0 }}
           />
         )}
-        <WiredInput
-          value={inputText}
-          onChange={(e: any) => {
-            const val = e.target?.value ?? e.detail?.sourceEvent?.target?.value ?? '';
-            setInputText(val);
-          }}
-          placeholder={getPlaceholder()}
-          disabled={isDrawer}
-          enterKeyHint="send"
-          onFocus={() => handleInputFocus.current()}
-          onBlur={() => handleInputBlur.current()}
-          onKeyDown={(e: any) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              handleSubmit();
-            }
-          }}
-          style={{ flex: 1, minWidth: 0, direction: 'rtl' }}
-        />
-        <span
-          onPointerDown={(e) => e.preventDefault()}
-          onMouseDown={(e) => e.preventDefault()}
-          style={{ display: 'inline-flex', flexShrink: 0 }}
+        {/*
+          The RoughBox wrapper must ALWAYS be rendered. If we only wrap the
+          input while floating, React swaps element types on the first focus
+          render and remounts the wired-input — destroying the focused DOM
+          node, dropping focus, and cancelling the keyboard (the "keyboard
+          doesn't open until the second tap" bug). Keeping the tree shape
+          identical in both states preserves the focused element.
+        */}
+        <RoughBox
+          stroke={isFloating ? '#2b2b2b' : 'transparent'}
+          strokeWidth={isFloating ? 1.4 : 0}
+          fill={isFloating ? '#ffffff' : undefined}
+          style={{ width: '100%', margin: isFloating ? '2px 0 4px' : 0 }}
         >
-          <WiredButton
-            elevation={2}
-            onClick={() => handleSubmit()}
-            disabled={isDrawer || !inputText.trim()}
-            style={{ whiteSpace: 'nowrap', minWidth: '58px', flexShrink: 0 }}
-          >
-            ارسال
-          </WiredButton>
-        </span>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '2px' }}>
+            {inputControls}
+          </div>
+        </RoughBox>
       </form>
     </div>
   );

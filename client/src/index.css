@@ -639,10 +639,14 @@ wired-card.game-sidebar-wired {
   }
 
   .chat-input-row.floating {
+    align-items: flex-start;
     background-color: #f7f5ed;
-    padding: 6px 4px 4px 4px;
-    box-shadow: 0 -4px 12px rgba(43, 43, 43, 0.12);
-    border-radius: 4px 4px 0 0;
+    padding: 8px 8px 16px 8px;
+    box-shadow: 0 -8px 22px rgba(43, 43, 43, 0.16);
+    border-radius: 10px 10px 0 0;
+    /* Glide the bar to its target instead of teleporting (set by
+       handleFocus: first painted at the old position, then animated). */
+    transition: top 0.18s ease-out;
   }
 }
 
