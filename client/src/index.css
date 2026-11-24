@@ -13,6 +13,11 @@
   font-family: 'Dastnevis', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', cursive, sans-serif;
 }
 
+:root {
+  /* Height of the drawer's tool bar under the canvas on mobile. */
+  --mobile-tools-h: 52px;
+}
+
 html, body {
   width: 100%;
   max-width: 100%;
@@ -29,8 +34,7 @@ body {
   min-height: 100%;
   direction: rtl;
   user-select: none;
-  /* Keep the locked screen from rubber-banding while the keyboard is open
-     (a bounced visual viewport shifts everything and breaks positioning). */
+  /* Keep the fixed game screen from rubber-banding on mobile. */
   overscroll-behavior-y: none;
 }
 
@@ -185,6 +189,7 @@ wired-radio-group {
 
 /* Game Screen & Pure Flex Layout */
 .game-screen {
+  container: game-screen / size;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -507,13 +512,19 @@ wired-card.game-sidebar-wired {
 }
 
 @media (max-width: 768px) {
+  /* The screen fills the visible area, so the layout reflows above the
+     on-screen keyboard like a messaging app:
+     - Android: interactive-widget=resizes-content (index.html) shrinks the
+       viewport itself, so 100% is already the area above the keyboard.
+     - iOS Safari ignores that, so iosViewport.ts feeds the visible height
+       (--app-height) and Safari's pan offset (--app-top) instead. */
   .game-screen {
     position: fixed;
-    top: 0;
+    top: var(--app-top, 0px);
     left: 0;
     right: 0;
-    height: var(--locked-vh, 100svh);
-    max-height: var(--locked-vh, 100svh);
+    height: var(--app-height, 100%);
+    max-height: none;
   }
 
   .header-bar {
@@ -570,7 +581,7 @@ wired-card.game-sidebar-wired {
     width: 100%;
     max-width: 100%;
     height: auto;
-    max-height: calc(var(--locked-vh, 100svh) * 0.44);
+    max-height: 44dvh;
     aspect-ratio: 4 / 3;
     padding: 3px !important;
     margin: 0 auto;
@@ -578,7 +589,7 @@ wired-card.game-sidebar-wired {
 
   /* When drawing on mobile, make canvas slightly more compact so tools and chat have plenty of space */
   .game-layout.role-drawer wired-card.canvas-wired-card {
-    max-height: calc(var(--locked-vh, 100svh) * 0.38);
+    max-height: 38dvh;
   }
 
   /* Toolbar spans FULL WIDTH on mobile */
@@ -637,17 +648,6 @@ wired-card.game-sidebar-wired {
   .chat-input-row {
     padding-top: 4px;
   }
-
-  .chat-input-row.floating {
-    align-items: flex-start;
-    background-color: #f7f5ed;
-    padding: 8px 8px 16px 8px;
-    box-shadow: 0 -8px 22px rgba(43, 43, 43, 0.16);
-    border-radius: 10px 10px 0 0;
-    /* Glide the bar to its target instead of teleporting (set by
-       handleFocus: first painted at the old position, then animated). */
-    transition: top 0.18s ease-out;
-  }
 }
 
 /* Chat & Messages */
@@ -662,6 +662,7 @@ wired-card.game-sidebar-wired {
 }
 
 .chat-messages {
+  container: chat-log / size;
   flex: 1 1 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -826,4 +827,64 @@ wired-card.game-sidebar-wired {
   font-size: 1.25rem !important;
   padding: 8px 16px;
   width: 100%;
+}
+
+/* Keep these last: they must override the base chat rules above. */
+/* Short mobile game screen — typically because the on-screen keyboard is open
+   (also short landscape phones). A container query on .game-screen rather than
+   a media query, because on iOS only the game screen shrinks, not the
+   viewport. Keep only what matters while typing: header → drawing (as large as
+   fits, 4:3) → [latest messages, if room is left] → input, right on top of the
+   keyboard. */
+@container game-screen (max-width: 768px) and (max-height: 520px) {
+  .sidebar-players {
+    display: none;
+  }
+
+  /* Both start from 0 and share the free height; the canvas' huge grow factor
+     gives it everything up to its full-width size, the chat gets the rest
+     (never less than the input row). */
+  .canvas-section {
+    flex: 100 1 0;
+    min-height: 0;
+    max-height: calc((100cqw - 12px) * 0.75);
+  }
+
+  .game-layout.role-drawer .canvas-section {
+    max-height: calc((100cqw - 12px) * 0.75 + var(--mobile-tools-h));
+  }
+
+  .canvas-card {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+
+  wired-card.canvas-wired-card {
+    width: auto;
+    height: 100%;
+    max-height: 100%;
+  }
+
+  .game-layout.role-drawer wired-card.canvas-wired-card {
+    height: calc(100% - var(--mobile-tools-h));
+    max-height: none;
+  }
+
+  .game-sidebar {
+    flex: 1 1 0;
+    /* sidebar card padding (12px) + input row (56px) */
+    min-height: 68px;
+  }
+
+  .chat-messages {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+/* A message strip too short to show a whole bubble is hidden, not sliced. */
+@container chat-log (max-height: 40px) {
+  .chat-messages > * {
+    visibility: hidden;
+  }
 }
