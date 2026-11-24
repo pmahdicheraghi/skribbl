@@ -25,10 +25,6 @@ export const Chat: React.FC<ChatProps> = ({
   const chatWrapperRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const inputRowRef = useRef<HTMLFormElement | null>(null);
-  // Focus/blur handlers live inside the effect below (they need the locked
-  // height closure); the component exposes them through these refs.
-  const handleInputFocus = useRef<() => void>(() => {});
-  const handleInputBlur = useRef<() => void>(() => {});
 
   const scrollToBottom = () => {
     const el = messagesContainerRef.current;
@@ -47,27 +43,21 @@ export const Chat: React.FC<ChatProps> = ({
     };
   }, [messages]);
 
-  // Mobile keyboard handling.
+  // Mobile keyboard handling — deliberately simple.
   //
   // The game screen is locked to the full (pre-keyboard) viewport height via
   // --locked-vh, so the keyboard overlays it and the canvas never moves.
-  // While the keyboard is open, the chat input row is floated to the top edge
-  // of the visual viewport (i.e. just above the keyboard).
-  //
-  // The critical part is handleFocus: the row is floated synchronously on
-  // focus, BEFORE the keyboard finishes opening. Safari's "scroll focused
-  // element into view" runs after the keyboard animation, and by then the
-  // input is already high on screen — so iOS never pans the visual viewport
-  // (which would push the canvas off screen). Floating only on viewport
-  // events (the previous approach) was always too late to stop that pan.
+  // When the on-screen keyboard opens, the visual viewport shrinks; we take
+  // that diff and move the chat input up by exactly that amount, so its
+  // bottom edge sits directly on the keyboard's top edge. When the keyboard
+  // closes, the diff returns to zero and the input goes back to its normal
+  // place in the chat.
   useEffect(() => {
     const vv = window.visualViewport;
     const MOBILE_MAX = 768;
 
     let lockedHeight = window.innerHeight;
     let lastWidth = window.innerWidth;
-    let keyboardOpen = false;
-    let blurTimer: number | undefined;
 
     const lock = (height: number) => {
       lockedHeight = height;
@@ -79,101 +69,14 @@ export const Chat: React.FC<ChatProps> = ({
     const rowHeight = () =>
       Math.round(inputRowRef.current?.getBoundingClientRect().height || 52);
 
-    const isInputFocused = () => {
-      const active = document.activeElement;
-      const row = inputRowRef.current;
-      return !!active && !!row && (active === row || row.contains(active));
-    };
-
-    const floatAt = (top: number) => {
-      const wrapper = chatWrapperRef.current;
-      if (!wrapper) return;
-      const rect = wrapper.getBoundingClientRect();
-      if (window.scrollY !== 0) {
-        window.scrollTo(0, 0);
-      }
-      setPlaceholderHeight(rowHeight());
-      setFloatingStyle({
-        position: 'fixed',
-        top: `${Math.max(0, Math.round(top))}px`,
-        // Pin the strip to the bottom of the layout viewport: the paper
-        // background runs from the input row down into the keyboard area,
-        // so the bar looks anchored instead of floating in mid-air.
-        bottom: 0,
-        left: `${Math.round(rect.left)}px`,
-        width: `${Math.round(rect.width)}px`,
-        zIndex: 900
-      });
-    };
-
     const unfloat = () => {
       setPlaceholderHeight(0);
       setFloatingStyle(null);
     };
 
-    const handleFocus = () => {
-      if (window.innerWidth > MOBILE_MAX) return;
-      const vh = vv ? vv.height : window.innerHeight;
-      const offsetTop = vv ? vv.offsetTop : 0;
-      const rowH = rowHeight();
-
-      // Target: right above the keyboard.
-      let target: number;
-      if (lockedHeight - vh > 120) {
-        // Keyboard already open (e.g. quick refocus): pin above it exactly.
-        target = offsetTop + vh - rowH - 4;
-      } else {
-        // Pre-empt the keyboard: estimate how much of the viewport it will
-        // cover and park the input above that line right now. If the guess is
-        // slightly off, reposition() snaps the row to the real keyboard top
-        // as soon as the visual viewport resizes. Landscape keyboards are much
-        // taller relative to the (short) viewport, hence the higher ratio.
-        const portrait = window.innerWidth <= window.innerHeight;
-        const expectedKeyboard = vh * (portrait ? 0.42 : 0.72);
-        target = vh - expectedKeyboard - rowH - 4;
-      }
-
-      keyboardOpen = true;
-
-      // Instead of teleporting, place the row at its current (in-flow)
-      // position first, then glide it up to the target over the next frames
-      // (CSS transition on `top`). React flushes the focus-event update
-      // synchronously, so the start position is painted before we move.
-      const rowRect = inputRowRef.current?.getBoundingClientRect();
-      if (!rowRect) {
-        floatAt(target);
-        return;
-      }
-      const startTop = rowRect.top + window.scrollY;
-      floatAt(startTop);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          floatAt(target);
-        });
-      });
-    };
-
-    const handleBlur = () => {
-      if (window.innerWidth > MOBILE_MAX) return;
-      // Don't drop the row back into its flow position while the keyboard is
-      // still closing (it would flash behind the keyboard). Give it a short
-      // grace period; reposition() restores it as soon as the viewport grows.
-      window.clearTimeout(blurTimer);
-      blurTimer = window.setTimeout(() => {
-        if (!isInputFocused()) {
-          keyboardOpen = false;
-          unfloat();
-          lock(window.innerHeight);
-        }
-      }, 400);
-    };
-
     const reposition = () => {
       if (window.innerWidth > MOBILE_MAX) {
-        if (keyboardOpen) {
-          keyboardOpen = false;
-          unfloat();
-        }
+        unfloat();
         if (window.innerHeight > lockedHeight) {
           lock(window.innerHeight);
         }
@@ -184,28 +87,39 @@ export const Chat: React.FC<ChatProps> = ({
         // Orientation change: re-lock to the new full height.
         lastWidth = window.innerWidth;
         lock(window.innerHeight);
-      } else if (!keyboardOpen && window.innerHeight > lockedHeight) {
+      } else if (window.innerHeight > lockedHeight) {
         // Browser chrome (e.g. iOS toolbars) expanded the viewport.
         lock(window.innerHeight);
       }
 
       const vh = vv ? vv.height : window.innerHeight;
       const offsetTop = vv ? vv.offsetTop : 0;
+      // The diff: how much of the screen the keyboard is covering.
       const keyboardHeight = lockedHeight - vh;
 
       if (keyboardHeight > 120) {
-        // Keyboard visible: pin the row right above it.
-        keyboardOpen = true;
-        window.clearTimeout(blurTimer);
-        floatAt(offsetTop + vh - rowHeight() - 4);
-      } else if (keyboardOpen) {
-        // Keyboard fully closed: restore the normal layout.
-        keyboardOpen = false;
-        window.clearTimeout(blurTimer);
-        unfloat();
-        if (!isInputFocused()) {
-          lock(window.innerHeight);
+        // Keyboard open: move the input up by exactly the keyboard height.
+        const wrapper = chatWrapperRef.current;
+        if (!wrapper) return;
+        if (window.scrollY !== 0) {
+          window.scrollTo(0, 0);
         }
+        const rect = wrapper.getBoundingClientRect();
+        setPlaceholderHeight(rowHeight());
+        setFloatingStyle({
+          position: 'fixed',
+          top: `${Math.max(0, Math.round(offsetTop + vh - rowHeight()))}px`,
+          // Pin the strip to the bottom of the layout viewport: the paper
+          // background runs from the input row down into the keyboard area,
+          // so the bar looks anchored instead of floating in mid-air.
+          bottom: 0,
+          left: `${Math.round(rect.left)}px`,
+          width: `${Math.round(rect.width)}px`,
+          zIndex: 900
+        });
+      } else {
+        // Keyboard closed (or not open): back to the normal layout.
+        unfloat();
       }
     };
 
@@ -213,11 +127,7 @@ export const Chat: React.FC<ChatProps> = ({
     vv?.addEventListener('scroll', reposition);
     window.addEventListener('resize', reposition);
 
-    handleInputFocus.current = handleFocus;
-    handleInputBlur.current = handleBlur;
-
     return () => {
-      window.clearTimeout(blurTimer);
       vv?.removeEventListener('resize', reposition);
       vv?.removeEventListener('scroll', reposition);
       window.removeEventListener('resize', reposition);
@@ -252,8 +162,6 @@ export const Chat: React.FC<ChatProps> = ({
         placeholder={getPlaceholder()}
         disabled={isDrawer}
         enterKeyHint="send"
-        onFocus={() => handleInputFocus.current()}
-        onBlur={() => handleInputBlur.current()}
         onKeyDown={(e: any) => {
           if (e.key === 'Enter') {
             e.preventDefault();
